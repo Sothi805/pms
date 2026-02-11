@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Delete Task — PMS{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-white">Delete Task</h1>
+    </div>
+
+    <div class="glass rounded-2xl p-8 border border-red-500/20">
+        <div class="mb-6">
+            <p class="text-white/70 mb-4">Are you sure you want to delete this task?</p>
+            <div class="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
+                <p class="text-white font-medium">{{ task.title }}</p>
+                <p class="text-white/60 text-sm mt-1">This action cannot be undone.</p>
+            </div>
+        </div>
+
+        <form method="post" class="flex gap-3">
+            {% csrf_token %}
+            <button type="submit"
+                    class="px-6 py-2.5 bg-red-500/80 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-all">
+                Delete Task
+            </button>
+            <a href="{% url 'general_tasks:task_detail' task.pk %}"
+               class="px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white/60 text-sm font-medium rounded-xl transition-all">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

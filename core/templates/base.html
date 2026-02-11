@@ -1,0 +1,207 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PMS{% endblock %}</title>
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gradient-to-br from-[#0f0c29] via-[#1a1a3e] to-[#24243e] text-white/90 antialiased">
+
+<!-- Mobile Menu Overlay -->
+<div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden"></div>
+
+<!-- ─── AUTHENTICATED LAYOUT ─── -->
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar - Hidden on mobile, overlay on tablet, fixed on desktop -->
+    <aside id="sidebar" class="fixed lg:relative inset-y-0 left-0 z-50 w-64 flex-shrink-0 glass-strong flex flex-col border-r border-white/5 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <!-- Logo -->
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+            <div>
+                <h1 class="text-sm font-semibold text-white tracking-wide">
+                    Project Management System
+                </h1>
+                <p class="text-xs text-white/40 mt-0.5">Manage Projects</p>
+            </div>
+            <!-- Close button for mobile -->
+            <button id="mobile-menu-close" class="lg:hidden text-white/60 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <a href="{% url 'dashboard' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if request.resolver_match.url_name == 'dashboard' %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'projects:project_list' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'projects' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
+                Projects
+            </a>
+
+            <a href="{% url 'general_tasks:task_list' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'general-tasks' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-11.581.5H5.25A2.25 2.25 0 013 19.25V4.75A2.25 2.25 0 015.25 2.5h13.5A2.25 2.25 0 0121 4.75v14.5A2.25 2.25 0 0118.75 21.5H9.631z"/></svg>
+                General Tasks
+            </a>
+
+            {% if user.is_system_admin or user.has_perm_manage_organizations %}
+            <a href="{% url 'organizations:org_list' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'organizations' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>
+                Organizations
+            </a>
+            {% endif %}
+
+            {% if user.is_system_admin or user.has_perm_create_users %}
+            <a href="{% url 'accounts:user_list' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'users' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+                Users
+            </a>
+            {% endif %}
+
+            {% if user.is_system_admin %}
+            <a href="{% url 'logs:audit_log_list' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'logs' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Audit Logs
+            </a>
+            {% endif %}
+
+            <a href="{% url 'accounts:settings' %}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                      {% if 'settings' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}
+                      transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.592c.55 0 1.02.398 1.11.94m-.213 9.526c.918.925 2.181 1.543 3.532 1.543 2.478 0 4.5-2.009 4.5-4.5s-2.022-4.5-4.5-4.5c-1.351 0-2.614.618-3.532 1.543M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 1.657-.672 3.157-1.757 4.243A6 6 0 0121 12a6 6 0 00-8.757-5.5"/></svg>
+                Settings
+            </a>
+        </nav>
+
+        <!-- User -->
+        <div class="px-4 py-4 border-t border-white/10">
+            <div class="flex items-center gap-3 justify-between">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-sm font-semibold text-blue-300">
+                        {{ user.username.0|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white/90 truncate">{{ user.username }}</p>
+                        <p class="text-xs text-white/40 truncate">{{ user.role|default:"No role" }}</p>
+                    </div>
+                </div>
+                <a href="{% url 'accounts:logout' %}" class="text-white/30 hover:text-red-400 transition-colors" title="Logout">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ─── MAIN ─── -->
+    <main class="flex-1 overflow-y-auto w-full">
+        <!-- Mobile Header with Menu Button -->
+        <div class="lg:hidden sticky top-0 z-30 glass-strong border-b border-white/10 px-4 py-3 flex items-center justify-between">
+            <button id="mobile-menu-open" class="text-white/80 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <h1 class="text-sm font-semibold text-white">Project Management System</h1>
+            <div class="w-6"></div> <!-- Spacer for centering -->
+        </div>
+
+        <!-- Messages (authenticated) -->
+        {% if messages %}
+        <div class="px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
+            {% for message in messages %}
+            <div class="glass rounded-xl px-4 py-3 text-sm
+                        {% if message.tags == 'error' %}border-red-500/30 text-red-300
+                        {% elif message.tags == 'success' %}border-emerald-500/30 text-emerald-300
+                        {% else %}border-blue-500/30 text-blue-300{% endif %}"
+                 role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="p-4 sm:p-6 lg:p-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<!-- Mobile Menu Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-menu-overlay');
+    const openBtn = document.getElementById('mobile-menu-open');
+    const closeBtn = document.getElementById('mobile-menu-close');
+
+    function openMenu() {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMenu() {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openMenu);
+    if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+    if (overlay) overlay.addEventListener('click', closeMenu);
+
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) {
+            closeMenu();
+        }
+    });
+
+    // Close menu when clicking nav links on mobile
+    const navLinks = sidebar.querySelectorAll('nav a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth < 1024) {
+                closeMenu();
+            }
+        });
+    });
+});
+</script>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

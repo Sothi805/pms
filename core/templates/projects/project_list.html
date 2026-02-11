@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Projects — PMS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
+    <div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">Projects</h1>
+        <p class="text-white/50 text-xs sm:text-sm mt-1">All your projects</p>
+    </div>
+    {% if user.is_system_admin or user.has_perm_manage_projects %}
+    <a href="{% url 'projects:project_create' %}"
+       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all w-full sm:w-auto">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        New Project
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+    {% for project in projects %}
+    <a href="{% url 'projects:project_detail' project.pk %}" class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5 block group">
+        <div class="flex items-start justify-between mb-3">
+            <h3 class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">{{ project.name }}</h3>
+            <span class="text-xs text-white/30 bg-white/5 px-2 py-0.5 rounded-full shrink-0 ml-2 whitespace-nowrap">{{ project.organization }}</span>
+        </div>
+        <p class="text-xs text-white/50 line-clamp-2 mb-4">{{ project.description|truncatewords:25|default:"No description" }}</p>
+
+        <!-- Progress -->
+        <div class="mb-2">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-white/40">Progress</span>
+                <span class="text-xs text-white/60 font-medium">{{ project.progress }}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500/70 rounded-full" style="width: {{ project.progress }}%"></div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs text-white/30 mt-3 flex-wrap">
+            <span>{{ project.task_stats.total }} tasks</span>
+            <span>·</span>
+            <span>{{ project.task_stats.done }} done</span>
+            {% if project.task_stats.having_issues %}
+            <span>·</span>
+            <span class="text-orange-300/60">{{ project.task_stats.having_issues }} issues</span>
+            {% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <div class="col-span-full text-center text-white/40 py-8 sm:py-12">
+        No projects found.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

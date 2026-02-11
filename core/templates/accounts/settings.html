@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Settings — PMS{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white">Settings</h1>
+        <p class="text-white/50 text-sm mt-1">Manage your account and preferences</p>
+    </div>
+
+    <!-- Account Information -->
+    <div class="glass rounded-2xl p-8 mb-6">
+        <h2 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+            Account Information
+        </h2>
+        
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="text-white/60">Username</span>
+                <span class="text-white font-medium">{{ user.username }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/60">Email</span>
+                <span class="text-white font-medium">{{ user.email|default:"Not set" }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/60">Full Name</span>
+                <span class="text-white font-medium">{{ user.get_full_name|default:"Not set" }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/60">Role</span>
+                <span class="text-blue-300 font-medium">{{ user.role|default:"No role" }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-white/60">Last Login</span>
+                <span class="text-white font-medium">{{ user.last_login|default:"Never"|date:"M d, Y H:i" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="glass rounded-2xl p-8">
+        <h2 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+            Change Password
+        </h2>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Current Password -->
+            <div>
+                <label for="{{ form.current_password.id_for_label }}" class="block text-sm font-semibold text-white/90 mb-2">
+                    {{ form.current_password.label }}
+                </label>
+                {{ form.current_password }}
+                {% if form.current_password.errors %}
+                <div class="text-red-400 text-xs mt-2">
+                    {% for error in form.current_password.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- New Password -->
+            <div>
+                <label for="{{ form.new_password.id_for_label }}" class="block text-sm font-semibold text-white/90 mb-2">
+                    {{ form.new_password.label }}
+                </label>
+                {{ form.new_password }}
+                {% if form.new_password.errors %}
+                <div class="text-red-400 text-xs mt-2">
+                    {% for error in form.new_password.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password -->
+            <div>
+                <label for="{{ form.confirm_password.id_for_label }}" class="block text-sm font-semibold text-white/90 mb-2">
+                    {{ form.confirm_password.label }}
+                </label>
+                {{ form.confirm_password }}
+                {% if form.confirm_password.errors %}
+                <div class="text-red-400 text-xs mt-2">
+                    {% for error in form.confirm_password.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <div class="pt-4 border-t border-white/10 flex gap-3">
+                <button type="submit" class="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all">
+                    Change Password
+                </button>
+                <a href="{% url 'dashboard' %}" class="px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

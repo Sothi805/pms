@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Organizations — PMS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
+    <div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">Organizations</h1>
+        <p class="text-white/50 text-xs sm:text-sm mt-1">Governance boundaries</p>
+    </div>
+    {% if user.is_superuser %}
+    <a href="{% url 'organizations:org_create' %}"
+       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all w-full sm:w-auto">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Create Organization
+    </a>
+    {% endif %}
+</div>
+
+<div class="space-y-3">
+    {% for org in organizations %}
+    <div class="glass-card rounded-xl sm:rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-semibold text-white">{{ org.name }}</h3>
+            <p class="text-xs text-white/40 mt-1 line-clamp-2">{{ org.description|truncatewords:30|default:"No description" }}</p>
+            <p class="text-xs text-white/30 mt-2">Created {{ org.created_at|date:"M d, Y" }} · {{ org.projects.count }} projects · {{ org.members.count }} members</p>
+        </div>
+        {% if user.is_system_admin %}
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="{% url 'organizations:org_members' org.pk %}" class="px-3 py-1.5 text-xs text-blue-300/60 hover:text-blue-300 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all">Members</a>
+            <a href="{% url 'organizations:org_edit' org.pk %}" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Edit</a>
+            <a href="{% url 'organizations:org_delete' org.pk %}" class="px-3 py-1.5 text-xs text-red-300/60 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all">Delete</a>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="text-center text-white/40 py-12">No organizations yet.</div>
+    {% endfor %}
+</div>
+{% endblock %}

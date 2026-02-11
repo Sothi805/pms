@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Manage Members — {{ org.name }} — PMS{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+    <div class="mb-8">
+        <a href="{% url 'organizations:org_list' %}" class="text-blue-400 hover:text-blue-300 text-sm font-medium inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to Organizations
+        </a>
+        <h1 class="text-3xl font-bold text-white mt-4">Manage Members</h1>
+        <p class="text-white/50 text-sm mt-1">{{ org.name }}</p>
+    </div>
+
+    <!-- Current Members Table -->
+    <div class="glass rounded-2xl p-8 mb-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Current Members ({{ org.members.count }})</h2>
+        
+        {% if org.members.exists %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-white/10">
+                        <th class="text-left py-3 px-4 text-sm font-medium text-white/70">Username</th>
+                        <th class="text-left py-3 px-4 text-sm font-medium text-white/70">Email</th>
+                        <th class="text-left py-3 px-4 text-sm font-medium text-white/70">Role</th>
+                        <th class="text-left py-3 px-4 text-sm font-medium text-white/70">Status</th>
+                        <th class="text-right py-3 px-4 text-sm font-medium text-white/70">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in org.members.all %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="py-3 px-4 text-sm text-white">{{ member.username }}</td>
+                        <td class="py-3 px-4 text-sm text-white/70">{{ member.email }}</td>
+                        <td class="py-3 px-4 text-sm">
+                            <span class="px-2 py-1 rounded-lg text-xs font-medium
+                                {% if member.role.name == 'System Administrator' %}bg-purple-500/20 text-purple-300
+                                {% elif member.role.name == 'Administrator' %}bg-blue-500/20 text-blue-300
+                                {% elif member.role.name == 'Coordinator' %}bg-green-500/20 text-green-300
+                                {% else %}bg-gray-500/20 text-gray-300{% endif %}">
+                                {{ member.role.name }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-sm">
+                            {% if member.is_active %}
+                            <span class="px-2 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium">Active</span>
+                            {% else %}
+                            <span class="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <form method="post" action="{% url 'organizations:remove_member' org.pk member.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" 
+                                        onclick="return confirm('Remove {{ member.username }} from this organization?')"
+                                        class="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-medium rounded-lg transition-all">
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-white/20 mb-3" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+            </svg>
+            <p class="text-white/40 text-sm">No members in this organization yet</p>
+            <p class="text-white/30 text-xs mt-1">Add members using the form below</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add Members Form -->
+    <div class="glass rounded-2xl p-8">
+        <h2 class="text-lg font-semibold text-white mb-2">Add Members</h2>
+        <p class="text-xs text-white/40 mb-4">Add new members to this organization. Existing members will not be removed.</p>
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% for field in form %}
+            <div class="relative">
+                <label for="{{ field.id_for_label }}" class="block text-sm font-semibold text-white/90 mb-2">
+                    {{ field.label }}
+                </label>
+                <p class="text-xs text-white/40 mb-2">Search for users by username or email. Separate multiple users with commas.</p>
+                {{ field }}
+                {% if field.errors %}
+                <p class="mt-1 text-xs text-red-400/80">{{ field.errors.0 }}</p>
+                {% endif %}
+                {% if field.help_text %}
+                <p class="mt-1 text-xs text-white/30">{{ field.help_text }}</p>
+                {% endif %}
+                <!-- Autocomplete dropdown for user search fields -->
+                {% if 'user-search-field' in field.field.widget.attrs.class %}
+                <div id="{{ field.id_for_label }}-suggestions" class="absolute top-full left-0 right-0 mt-1 bg-white/10 border border-white/20 rounded-xl max-h-48 overflow-y-auto hidden z-50 backdrop-blur-sm"></div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- Actions -->
+            <div class="flex gap-3 pt-4 border-t border-white/10">
+                <button type="submit" class="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all">
+                    Add Members
+                </button>
+                <a href="{% url 'organizations:org_list' %}" class="px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all">
+                    Back to Organizations
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchFields = document.querySelectorAll('.user-search-field');
+    let debounceTimer;
+
+    searchFields.forEach(field => {
+        const suggestionsDiv = document.getElementById(field.id + '-suggestions');
+        if (!suggestionsDiv) return;
+        
+        const fieldType = field.getAttribute('data-field-type');
+        
+        field.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => performSearch(field, suggestionsDiv, fieldType), 300);
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== field && e.target.closest('#' + field.id + '-suggestions') === null) {
+                suggestionsDiv.classList.add('hidden');
+            }
+        });
+    });
+
+    async function performSearch(field, suggestionsDiv, fieldType) {
+        const query = field.value.trim();
+        if (!query || query.length < 1) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+
+        try {
+            const response = await fetch("{% url 'accounts:search_users' %}?q=" + encodeURIComponent(query));
+            const data = await response.json();
+            displaySuggestions(field, suggestionsDiv, data.users, fieldType);
+        } catch (error) {
+            console.error('Error searching users:', error);
+        }
+    }
+
+    function displaySuggestions(field, suggestionsDiv, users, fieldType) {
+        suggestionsDiv.innerHTML = '';
+        
+        if (users.length === 0) {
+            suggestionsDiv.innerHTML = '<div class="px-4 py-2 text-white/50 text-sm">No users found</div>';
+            suggestionsDiv.classList.remove('hidden');
+            return;
+        }
+
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2 cursor-pointer hover:bg-white/10 transition text-white text-sm border-b border-white/5 last:border-b-0';
+            div.textContent = `${user.username} (${user.email})`;
+            
+            div.addEventListener('click', function() {
+                if (fieldType === 'user-search-single') {
+                    field.value = user.username;
+                } else {
+                    // For multi-select, add to comma-separated list
+                    const currentValue = field.value.trim();
+                    const lastCommaIndex = currentValue.lastIndexOf(',');
+                    let beforeLastItem = '';
+                    
+                    if (lastCommaIndex !== -1) {
+                        beforeLastItem = currentValue.substring(0, lastCommaIndex + 1) + ' ';
+                    }
+                    field.value = beforeLastItem + user.username;
+                }
+                suggestionsDiv.classList.add('hidden');
+            });
+            
+            suggestionsDiv.appendChild(div);
+        });
+        
+        suggestionsDiv.classList.remove('hidden');
+    }
+});
+</script>
+{% endblock %}

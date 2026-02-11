@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PMS{% endblock %}</title>
+    <link href="{% static 'style.css' %}" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gradient-to-br from-[#0f0c29] via-[#1a1a3e] to-[#24243e] text-white/90 antialiased">
+
+{% if messages %}
+<div class="fixed top-4 right-4 z-50 space-y-2" style="max-width: 400px;">
+    {% for message in messages %}
+    <div class="glass rounded-xl px-4 py-3 text-sm
+                {% if message.tags == 'error' %}border-red-500/30 text-red-300
+                {% elif message.tags == 'success' %}border-emerald-500/30 text-emerald-300
+                {% else %}border-blue-500/30 text-blue-300{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="min-h-screen flex items-center justify-center px-4 py-8">
+    {% block content %}{% endblock %}
+</div>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

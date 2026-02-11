@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs — PMS{% endblock %}
+
+{% block content %}
+<div class="mb-6 sm:mb-8">
+    <h1 class="text-xl sm:text-2xl font-semibold text-white">Audit Logs</h1>
+    <p class="text-white/50 text-xs sm:text-sm mt-1">Immutable system activity log</p>
+</div>
+
+<div class="space-y-1 sm:space-y-2">
+    {% for log in logs %}
+    <div class="flex gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.04] transition-all">
+        <div class="w-1 rounded-full flex-shrink-0
+            {% if 'CREATED' in log.action %}bg-emerald-500/30
+            {% elif 'REJECT' in log.action %}bg-red-500/30
+            {% elif 'CHANGE' in log.action or 'UPDATED' in log.action %}bg-blue-500/30
+            {% elif 'DELETED' in log.action %}bg-red-500/30
+            {% elif 'DONE' in log.action %}bg-emerald-500/30
+            {% else %}bg-white/10{% endif %}">
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 text-white/50 whitespace-nowrap">{{ log.action }}</span>
+                {% if log.project %}
+                <span class="text-xs text-white/30 truncate">{{ log.project }}</span>
+                {% endif %}
+            </div>
+            <p class="text-sm text-white/60 line-clamp-2 sm:line-clamp-none">{{ log.detail }}</p>
+            <p class="text-[10px] text-white/30 mt-0.5 truncate">
+                {{ log.actor.username|default:"System" }} · {{ log.timestamp|date:"M d, Y H:i:s" }}
+            </p>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-center text-white/40 py-8 sm:py-12">No logs yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

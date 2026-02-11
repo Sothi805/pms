@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — PMS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
+    <div class="min-w-0">
+        <div class="flex items-center gap-2 text-xs text-white/40 mb-1 overflow-x-auto">
+            <a href="{% url 'projects:project_list' %}" class="hover:text-white/60 transition-colors whitespace-nowrap">Projects</a>
+            <span>/</span>
+            <span class="text-white/60 whitespace-nowrap truncate">{{ project.name }}</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white truncate">{{ project.name }}</h1>
+        <p class="text-white/50 text-xs sm:text-sm mt-1 truncate">{{ project.organization }}</p>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <a href="{% url 'tasks:task_board' project.pk %}"
+           class="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium rounded-lg sm:rounded-xl transition-all whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z"/></svg>
+            <span class="hidden sm:inline">Task Board</span>
+            <span class="sm:hidden">Board</span>
+        </a>
+        {% if user.is_system_admin or user.has_perm_manage_projects %}
+        <a href="{% url 'projects:project_edit' project.pk %}"
+           class="px-3 sm:px-4 py-2 sm:py-2.5 bg-white/5 hover:bg-white/10 text-white/60 text-xs sm:text-sm font-medium rounded-lg sm:rounded-xl transition-all whitespace-nowrap">
+            Edit
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Info Cards Row -->
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5 col-span-2 sm:col-span-1">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Progress</p>
+        <p class="text-2xl sm:text-3xl font-semibold text-white mt-2">{{ project.progress }}%</p>
+        <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-2">
+            <div class="h-full bg-blue-500/70 rounded-full" style="width: {{ project.progress }}%"></div>
+        </div>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Total Tasks</p>
+        <p class="text-2xl sm:text-3xl font-semibold text-white mt-2">{{ project.task_stats.total }}</p>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">In Progress</p>
+        <p class="text-2xl sm:text-3xl font-semibold text-blue-300 mt-2">{{ project.task_stats.in_progress }}</p>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Completed</p>
+        <p class="text-2xl sm:text-3xl font-semibold text-emerald-300 mt-2">{{ project.task_stats.done }}</p>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5 col-span-2 sm:col-span-1">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Story Points</p>
+        <div class="mt-2">
+            <p class="text-xl sm:text-2xl font-semibold text-white">{{ project.task_stats.earned_story_points }}<span class="text-base sm:text-lg text-white/40">/{{ project.task_stats.total_story_points }}</span></p>
+            <p class="text-xs text-white/40 mt-1">{{ project.task_stats.remaining_story_points }} remaining</p>
+        </div>
+    </div>
+</div>
+
+<!-- Description -->
+{% if project.description %}
+<div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
+    <h3 class="text-sm font-semibold text-white/80 mb-2">Description</h3>
+    <p class="text-sm text-white/60 leading-relaxed">{{ project.description }}</p>
+</div>
+{% endif %}
+
+
+
+<!-- Members & Access Control -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <h3 class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Members</h3>
+        <p class="text-xs text-white/40 mb-3">Full access: edit tasks, move stages</p>
+        <div class="space-y-2">
+            {% for m in project.members.all %}
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-blue-500/15 border border-blue-400/20 flex items-center justify-center text-xs text-blue-300">{{ m.username.0|upper }}</div>
+                <span class="text-sm text-white/70">{{ m.username }}</span>
+            </div>
+            {% empty %}
+            <p class="text-xs text-white/30">No members</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Commenters</h3>
+        <p class="text-xs text-white/40 mb-3">Can view & add comments/notes</p>
+        <div class="space-y-2">
+            {% for c in project.commenters.all %}
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-400/20 flex items-center justify-center text-xs text-amber-300">{{ c.username.0|upper }}</div>
+                <span class="text-sm text-white/70">{{ c.username }}</span>
+            </div>
+            {% empty %}
+            <p class="text-xs text-white/30">No commenters</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <h3 class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Viewers</h3>
+        <p class="text-xs text-white/40 mb-3">Read-only access to view</p>
+        <div class="space-y-2">
+            {% for v in project.viewers.all %}
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-slate-500/15 border border-slate-400/20 flex items-center justify-center text-xs text-slate-300">{{ v.username.0|upper }}</div>
+                <span class="text-sm text-white/70 truncate">{{ v.username }}</span>
+            </div>
+            {% empty %}
+            <p class="text-xs text-white/30">No viewers</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Tasks by Project Category -->
+{% if project.tasks_by_project_category %}
+<div class="mb-6 sm:mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h2 class="text-base sm:text-lg font-semibold text-white">Task Summary by Category</h2>
+        <a href="{% url 'projects:category_create' project.pk %}"
+           class="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-500/80 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-all w-full sm:w-auto">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            New Category
+        </a>
+    </div>
+    <div class="space-y-3">
+        {% for category in project.tasks_by_project_category %}
+        <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5 cursor-pointer hover:bg-white/[0.06] transition-all"
+             onclick="toggleCategory(this, 'cat-{{ category.pk }}')">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 class="text-sm sm:text-base font-semibold text-white">{{ category.name }}</h3>
+                        <span class="text-xs px-2 py-1 rounded-full bg-white/5 text-white/40 whitespace-nowrap">
+                            {{ category.done_tasks }}/{{ category.total_tasks }}
+                        </span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-blue-500/15 text-blue-300 border border-blue-400/20 whitespace-nowrap">
+                            Weight: {{ category.weight }}
+                        </span>
+                    </div>
+                    <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-300"
+                             style="width: {{ category.completion_percentage }}%"></div>
+                    </div>
+                    <p class="text-xs text-white/40 mt-1">{{ category.completion_percentage }}% complete</p>
+                </div>
+                <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0" onclick="event.stopPropagation()">
+                    <a href="{% url 'projects:category_move_up' category.pk %}"
+                       class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/60 transition-all"
+                       title="Move up">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"></path>
+                        </svg>
+                    </a>
+                    <a href="{% url 'projects:category_move_down' category.pk %}"
+                       class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/60 transition-all"
+                       title="Move down">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </a>
+                    <a href="{% url 'tasks:task_create' project.pk %}?project_category={{ category.pk }}"
+                       class="p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 transition-all"
+                       title="Add task to this category">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </a>
+                    <a href="{% url 'projects:category_edit' category.pk %}"
+                       class="p-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 transition-all"
+                       title="Edit category">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </a>
+                    <a href="{% url 'projects:category_delete' category.pk %}"
+                       class="p-2 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-300 transition-all"
+                       title="Delete category">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </a>
+                    <svg class="cat-toggle-icon w-5 h-5 text-white/40 ml-2 transition-transform"
+                         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Category Tasks (Hidden by default) -->
+            <div id="cat-{{ category.pk }}" class="hidden mt-4 space-y-2 border-t border-white/5 pt-4">
+                {% for task in category.tasks.all %}
+                <a href="{% url 'tasks:task_detail' task.pk %}"
+                   class="block glass-card rounded-lg p-3 hover:bg-white/[0.06] transition-all group">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{{ task.title }}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-white/40">
+                                    {{ task.get_stage_display }}
+                                </span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
+                                    {{ task.get_category_display }}
+                                </span>
+                                {% if task.story_points %}
+                                <span class="text-xs px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+                                    {{ task.story_points }} SP
+                                </span>
+                                {% endif %}
+                                {% if task.deadline %}
+                                <span class="text-xs text-white/30">{{ task.deadline|date:"M d" }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if task.assignees.all %}
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            {% for assignee in task.assignees.all|slice:":2" %}
+                            <div class="w-4 h-4 rounded-full bg-blue-500/20 border border-blue-400/20 flex items-center justify-center text-[9px] text-blue-300"
+                                 title="{{ assignee.username }}">
+                                {{ assignee.username.0|upper }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% empty %}
+                <div class="text-center py-4">
+                    <p class="text-xs text-white/30 mb-3">No tasks in this category yet</p>
+                    <a href="{% url 'tasks:task_create' project.pk %}?project_category={{ category.pk }}"
+                       class="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-all border border-emerald-500/30">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Task
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<!-- No Categories - Show Setup Message -->
+<div class="mb-8">
+    <h2 class="text-lg font-semibold text-white mb-4">Task Summary by Category</h2>
+    <div class="glass-card rounded-2xl p-8 text-center">
+        <div class="mb-4">
+            <svg class="w-12 h-12 mx-auto text-white/30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+        </div>
+        <h3 class="text-white font-semibold mb-2">No Project Categories Yet</h3>
+        <p class="text-white/60 text-sm mb-4">Project categories help weight task completion towards overall project progress. Create categories and assign weights to track what matters most.</p>
+        <p class="text-white/40 text-xs mb-4">Get started by creating your first category.</p>
+        <a href="{% url 'projects:category_create' project.pk %}"
+           class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Create Category
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Project Activity Log -->
+<div class="mb-8">
+    <h2 class="text-lg font-semibold text-white mb-4">Activity Log</h2>
+    <div class="glass-card rounded-2xl p-5 space-y-2">
+        {% if audit_logs %}
+            {% for log in audit_logs %}
+            <div class="flex items-start justify-between py-2.5 border-b border-white/5 last:border-b-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-5 h-5 rounded-full bg-blue-500/15 border border-blue-400/20 flex items-center justify-center text-[10px] text-blue-300 flex-shrink-0">
+                            {{ log.actor.username.0|upper }}
+                        </div>
+                        <span class="text-sm text-white/70">{{ log.actor.username|default:"System" }}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded-full bg-white/5 text-white/40">
+                            {% if log.action == "TASK_CREATED" %}
+                                📋 Task Created
+                            {% elif log.action == "TASK_UPDATED" %}
+                                ✏️ Task Updated
+                            {% elif log.action == "TASK_MOVED" %}
+                                🔄 Task Moved
+                            {% elif log.action == "PROJECT_UPDATED" %}
+                                🏗️ Project Updated
+                            {% elif log.action == "PROJECT_NOTE_ADDED" %}
+                                📝 Note Added
+                            {% elif log.action == "PROJECT_CREATED" %}
+                                ✨ Project Created
+                            {% elif log.action == "CATEGORY_CREATED" %}
+                                📂 Category Created
+                            {% else %}
+                                📌 {{ log.action }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if log.detail %}
+                    <p class="text-xs text-white/50">{{ log.detail }}</p>
+                    {% endif %}
+                </div>
+                <span class="text-xs text-white/30 ml-2 flex-shrink-0">{{ log.timestamp|date:"M d, H:i" }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="text-center py-6">
+            <p class="text-sm text-white/30">No activity yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Notes -->
+<div class="mb-8">
+    <h2 class="text-lg font-semibold text-white mb-4">Notes</h2>
+
+    {% if can_add_notes %}
+    <div class="glass-card rounded-2xl p-5 mb-4">
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            {{ note_form.content }}
+            <button type="submit"
+                    class="px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all">
+                Add Note
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="space-y-3">
+        {% for note in notes %}
+        <div class="glass-card rounded-2xl px-5 py-4">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-blue-500/15 border border-blue-400/20 flex items-center justify-center text-xs text-blue-300">{{ note.author.username.0|upper }}</div>
+                    <span class="text-sm text-white/70">{{ note.author.username }}</span>
+                    <span class="text-xs text-white/30">{{ note.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                {% if user == note.author or user.is_system_admin %}
+                <form method="post" action="{% url 'projects:note_delete' note.pk %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="text-xs text-red-300/40 hover:text-red-300 transition-colors">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+            <p class="text-sm text-white/60 leading-relaxed">{{ note.content }}</p>
+        </div>
+        {% empty %}
+        <p class="text-center text-white/30 py-6 text-sm">No notes yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleCategory(element, categoryId) {
+    const container = document.getElementById(categoryId);
+    const icon = element.querySelector('.cat-toggle-icon');
+    
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        icon.style.transform = 'rotate(90deg)';
+    } else {
+        container.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+</script>
+{% endblock %}

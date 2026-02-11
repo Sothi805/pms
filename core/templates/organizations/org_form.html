@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — PMS{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6 sm:mb-8">
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">{{ title }}</h1>
+    </div>
+
+    <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8">
+        <form method="post" class="space-y-4 sm:space-y-5">
+            {% csrf_token %}
+
+            {% for field in form %}
+            <div class="relative">
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-white/70 mb-2">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                <p class="mt-1 text-xs text-red-400/80">{{ field.errors.0 }}</p>
+                {% endif %}
+                {% if field.help_text %}
+                <p class="mt-1 text-xs text-white/30">{{ field.help_text }}</p>
+                {% endif %}
+                <!-- Autocomplete dropdown for user search fields -->
+                {% if 'user-search-field' in field.field.widget.attrs.class %}
+                <div id="{{ field.id_for_label }}-suggestions" class="absolute top-full left-0 right-0 mt-1 bg-white/10 border border-white/20 rounded-xl max-h-48 overflow-y-auto hidden z-50 backdrop-blur-sm"></div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                <button type="submit"
+                        class="px-6 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all w-full sm:w-auto">
+                    Save
+                </button>
+                <a href="{% url 'organizations:org_list' %}"
+                   class="px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white/60 text-sm font-medium rounded-xl transition-all text-center w-full sm:w-auto">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchFields = document.querySelectorAll('.user-search-field');
+    let debounceTimer;
+
+    searchFields.forEach(field => {
+        const suggestionsDiv = document.getElementById(field.id + '-suggestions');
+        if (!suggestionsDiv) return; // Skip if no suggestions div
+        
+        const fieldType = field.getAttribute('data-field-type');
+        
+        field.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => performSearch(field, suggestionsDiv, fieldType), 300);
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== field && e.target.closest('#' + field.id + '-suggestions') === null) {
+                suggestionsDiv.classList.add('hidden');
+            }
+        });
+    });
+
+    async function performSearch(field, suggestionsDiv, fieldType) {
+        const query = field.value.trim();
+        if (!query || query.length < 1) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+
+        try {
+            const response = await fetch("{% url 'accounts:search_users' %}?q=" + encodeURIComponent(query));
+            const data = await response.json();
+            displaySuggestions(field, suggestionsDiv, data.users, fieldType);
+        } catch (error) {
+            console.error('Error searching users:', error);
+        }
+    }
+
+    function displaySuggestions(field, suggestionsDiv, users, fieldType) {
+        suggestionsDiv.innerHTML = '';
+        
+        if (users.length === 0) {
+            suggestionsDiv.innerHTML = '<div class="px-4 py-2 text-white/50 text-sm">No users found</div>';
+            suggestionsDiv.classList.remove('hidden');
+            return;
+        }
+
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2 cursor-pointer hover:bg-white/10 transition text-white text-sm border-b border-white/5 last:border-b-0';
+            div.textContent = `${user.username} (${user.email})`;
+            
+            div.addEventListener('click', function() {
+                if (fieldType === 'user-search-single') {
+                    field.value = user.username;
+                } else {
+                    // For multi-select, add to comma-separated list
+                    const currentValue = field.value.trim();
+                    const lastCommaIndex = currentValue.lastIndexOf(',');
+                    let beforeLastItem = '';
+                    
+                    if (lastCommaIndex !== -1) {
+                        beforeLastItem = currentValue.substring(0, lastCommaIndex + 1) + ' ';
+                    }
+                    field.value = beforeLastItem + user.username;
+                }
+                suggestionsDiv.classList.add('hidden');
+            });
+            
+            suggestionsDiv.appendChild(div);
+        });
+        
+        suggestionsDiv.classList.remove('hidden');
+    }
+});
+</script>

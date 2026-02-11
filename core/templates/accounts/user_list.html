@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Users — PMS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
+    <div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">Users</h1>
+        <p class="text-white/50 text-xs sm:text-sm mt-1">Manage system users and permissions</p>
+    </div>
+    <a href="{% url 'accounts:user_create' %}"
+       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all w-full sm:w-auto">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Create User
+    </a>
+</div>
+
+<div class="space-y-3">
+    {% for u in users %}
+    <div class="glass-card rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-500/15 border border-blue-400/20 flex items-center justify-center text-sm font-semibold text-blue-300 flex-shrink-0">
+                {{ u.username.0|upper }}
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-1 mb-1">
+                    <p class="text-sm font-medium text-white">{{ u.username }}</p>
+                    {% if u.is_system_admin %}<span class="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full whitespace-nowrap">System Admin</span>{% endif %}
+                    {% if u.is_org_admin %}<span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full whitespace-nowrap">Org Admin</span>{% endif %}
+                    {% if not u.is_active %}<span class="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full whitespace-nowrap">Inactive</span>{% endif %}
+                </div>
+                <p class="text-xs text-white/40 truncate">{{ u.email|default:"No email" }} · {{ u.role|default:"No role" }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+            <a href="{% url 'accounts:user_edit' u.pk %}" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Edit</a>
+            {% if request.user.is_system_admin %}
+            <a href="{% url 'accounts:reset_password' u.pk %}" class="px-3 py-1.5 text-xs text-amber-300/60 hover:text-amber-300 bg-amber-500/5 hover:bg-amber-500/10 rounded-lg transition-all">Reset PW</a>
+            <a href="{% url 'accounts:set_user_password' u.pk %}" class="px-3 py-1.5 text-xs text-blue-300/60 hover:text-blue-300 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-all">Set PW</a>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center text-white/40 py-12">No users found.</div>
+    {% endfor %}
+</div>
+{% endblock %}

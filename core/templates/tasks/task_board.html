@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% load task_tags %}
+{% block title %}Task Board — {{ project.name }} — PMS{% endblock %}
+
+{% block extra_head %}
+<style>
+    .board-scroll { 
+        overflow-x: auto; 
+        overflow-y: auto;
+        scroll-behavior: smooth;
+    }
+    .board-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+    .board-scroll::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+    }
+    .board-scroll::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+    }
+    .board-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.4);
+    }
+    .task-card-drag { 
+        cursor: grab; 
+        user-select: none;
+    }
+    .task-card-drag:active { cursor: grabbing; }
+    .task-card-drag.opacity-50 { opacity: 0.5; }
+    .drop-indicator {
+        border: 2px dashed rgba(59, 130, 246, 0.3);
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 1rem;
+        min-height: 100px;
+        transition: all 0.15s ease;
+    }
+    .drop-indicator.over {
+        border-color: rgba(59, 130, 246, 0.6);
+        background: rgba(59, 130, 246, 0.15);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    .category-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        border-radius: 9999px;
+        border: 1px solid;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .category-btn.active {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.4);
+        color: rgb(147, 197, 253);
+    }
+    .category-btn.inactive {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+    }
+    .category-btn.inactive:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.7);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-white/40 mb-1 overflow-x-auto">
+            <a href="{% url 'projects:project_list' %}" class="hover:text-white/60 transition-colors whitespace-nowrap">Projects</a>
+            <span>/</span>
+            <a href="{% url 'projects:project_detail' project.pk %}" class="hover:text-white/60 transition-colors whitespace-nowrap">{{ project.name }}</a>
+            <span>/</span>
+            <span class="text-white/60 whitespace-nowrap">Board</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">Task Board</h1>
+    </div>
+    <div class="flex items-center gap-3">
+        {% if can_manage %}
+        <a href="{% url 'tasks:task_create' project.pk %}"
+           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all w-full sm:w-auto">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            New Task
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Category Filter Buttons -->
+<div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8 overflow-x-auto pb-2 sticky top-0 z-10 py-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+    <span class="text-xs text-white/40 font-medium whitespace-nowrap flex-shrink-0">Category:</span>
+    {% for cat_key, cat_label in categories %}
+    <a href="?category={{ cat_key }}"
+       class="category-btn {% if cat_key == selected_category %}active{% else %}inactive{% endif %} whitespace-nowrap flex-shrink-0">
+        {{ cat_label }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Board: Stages as Vertical Columns -->
+<div class="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+    {% for stg_key, stg_data in board.items %}
+    <div class="flex-shrink-0 w-[280px] sm:w-[320px]">
+        <!-- Stage Header -->
+        <div class="flex items-center justify-between mb-4 px-2">
+            <div>
+                <h2 class="text-sm sm:text-base font-semibold text-white">{{ stg_data.label }}</h2>
+                <span class="text-xs text-white/40">{{ stg_data.tasks|length }} task{{ stg_data.tasks|length|pluralize }}</span>
+            </div>
+        </div>
+
+        <!-- Tasks Container for this Stage (Drop Zone) -->
+        <div class="drop-zone rounded-xl sm:rounded-2xl p-3 space-y-3 transition-all border border-white/10 bg-white/[0.02] min-h-[400px] sm:min-h-[500px]"
+             data-category="{{ selected_category }}"
+             data-stage="{{ stg_key }}"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+
+            {% if stg_data.tasks %}
+                {% for task in stg_data.tasks %}
+                <div class="glass-card rounded-xl p-3 task-card-drag transition-all hover:shadow-lg hover:shadow-blue-500/20"
+                     draggable="{% if can_move %}true{% else %}false{% endif %}"
+                     data-task-id="{{ task.pk }}"
+                     data-category="{{ task.category }}"
+                     data-stage="{{ task.stage }}"
+                     ondragstart="handleDragStart(event)"
+                     ondragend="handleDragEnd(event)">
+                    <a href="{% url 'tasks:task_detail' task.pk %}" class="block group">
+                        <p class="text-sm font-medium text-white/90 group-hover:text-blue-300 transition-colors mb-2 line-clamp-2">{{ task.title }}</p>
+                    </a>
+                    
+                    <!-- Task Meta -->
+                    <div class="flex flex-wrap gap-1 mb-2">
+                        <span class="inline-block text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/20">{{ task.category|title }}</span>
+                        {% if task.story_points %}
+                        <span class="inline-block text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/20">{{ task.story_points }} SP</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Deadline -->
+                    {% if task.deadline %}
+                    <p class="text-xs text-white/40 mb-2">{{ task.deadline|date:"M d, Y" }}</p>
+                    {% endif %}
+                    
+                    <!-- Assignees -->
+                    {% if task.assignees.all %}
+                    <div class="flex items-center gap-1">
+                        {% for assignee in task.assignees.all|slice:":4" %}
+                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-[11px] text-white font-semibold border border-white/10" title="{{ assignee.username }}">
+                            {{ assignee.username.0|upper }}
+                        </div>
+                        {% endfor %}
+                        {% if task.assignees.all|length > 4 %}
+                        <span class="text-[10px] text-white/40 ml-1">+{{ task.assignees.all|length|add:"-4" }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="text-center py-16">
+                <p class="text-sm text-white/20">No tasks</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div class="glass rounded-xl px-4 py-3 text-sm max-w-sm"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let draggedElement = null;
+let draggedTaskId = null;
+
+function handleDragStart(e) {
+    draggedElement = e.target.closest('[data-task-id]');
+    draggedTaskId = draggedElement.dataset.taskId;
+    draggedElement.classList.add('opacity-50');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedTaskId);
+}
+
+function handleDragEnd(e) {
+    if (draggedElement) {
+        draggedElement.classList.remove('opacity-50');
+    }
+    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drop-indicator', 'over'));
+    draggedElement = null;
+    draggedTaskId = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const zone = e.currentTarget;
+    zone.classList.add('drop-indicator', 'over');
+}
+
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('drop-indicator', 'over');
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    const zone = e.currentTarget;
+    zone.classList.remove('drop-indicator', 'over');
+
+    if (!draggedTaskId) return;
+
+    const newStage = zone.dataset.stage;
+    const newCategory = zone.dataset.category;
+    const oldStage = draggedElement.dataset.stage;
+    const oldCategory = draggedElement.dataset.category;
+
+    if (newStage === oldStage && newCategory === oldCategory) return;
+
+    // Optimistic UI: move card
+    zone.appendChild(draggedElement);
+    draggedElement.dataset.stage = newStage;
+    draggedElement.dataset.category = newCategory;
+
+    try {
+        const response = await fetch(`/tasks/${draggedTaskId}/move/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ stage: newStage, category: newCategory }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            showToast(data.error || 'Move failed', 'error');
+            // Revert: reload page
+            location.reload();
+        } else {
+            showToast('Task moved successfully', 'success');
+            // If the task was closed (DONE/REJECT), reload to reflect new clones
+            if (newStage === 'DONE' || newStage === 'REJECT') {
+                setTimeout(() => location.reload(), 800);
+            }
+        }
+    } catch (err) {
+        showToast('Network error', 'error');
+        location.reload();
+    }
+}
+
+function showToast(message, type) {
+    const toast = document.getElementById('toast');
+    const inner = toast.querySelector('div');
+    inner.textContent = message;
+    inner.className = 'glass rounded-xl px-4 py-3 text-sm max-w-sm ' +
+        (type === 'error' ? 'border-red-500/30 text-red-300' : 'border-emerald-500/30 text-emerald-300');
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+function getCookie(name) {
+    let value = '; ' + document.cookie;
+    let parts = value.split('; ' + name + '=');
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+</script>
+{% endblock %}
