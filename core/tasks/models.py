@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class TaskInstance(models.Model):
@@ -80,6 +81,8 @@ class TaskInstance(models.Model):
         default=False, help_text="True once points are awarded."
     )
     deadline = models.DateField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True, help_text="Actual task start date")
+    end_date = models.DateField(null=True, blank=True, help_text="Actual task completion/end date")
 
     # ── Lineage ──
     parent_task = models.ForeignKey(
@@ -129,6 +132,87 @@ class TaskInstance(models.Model):
             self.DEPLOYMENT: "border-emerald-400/40",
             self.GENERAL: "border-slate-400/40",
         }.get(self.category, "border-white/20")
+
+    @property
+    def get_available_moves(self):
+        """Return list of available stage transitions for this task."""
+        available_moves = []
+        for stage_key, stage_label in self.STAGE_CHOICES:
+            if stage_key != self.stage:
+                available_moves.append((stage_key, stage_label))
+        return available_moves
+
+    @property
+    def due_status(self):
+        """Returns 'Due in X days', 'Overdue X days', or None if no deadline.
+        
+        Based on deadline vs today.
+        """
+        if not self.deadline:
+            return None
+        
+        today = timezone.now().date()
+        days_diff = (self.deadline - today).days
+        
+        if days_diff > 0:
+            return f"Due in {days_diff} day{'s' if days_diff != 1 else ''}"
+        elif days_diff == 0:
+            return "Due today"
+        else:
+            return f"Overdue {abs(days_diff)} day{'s' if abs(days_diff) != 1 else ''}"
+
+    @property
+    def on_time_status(self):
+        """Returns 'On Time' or 'Late' based on actual end_date vs deadline.
+        
+        Returns None if task not completed or no deadline set.
+        """
+        if self.stage != self.DONE or not self.end_date or not self.deadline:
+            return None
+        
+        if self.end_date <= self.deadline:
+            return "On Time"
+        else:
+            return "Late"
+
+    @property
+    def stage_status(self):
+        """Returns status badge text based on current stage.
+        
+        Used for PENDING and HAVING_ISSUES stages which have their own status.
+        """
+        if self.stage == self.PENDING:
+            return "⏸️ Pending"
+        elif self.stage == self.HAVING_ISSUES:
+            return "⚠️ Having Issues"
+        return None
+
+    def save(self, *args, **kwargs):
+        """Auto-set dates when moving to different stages:
+        - Set start_date when moving to IN_PROGRESS
+        - Set end_date when moving to DONE
+        - Set end_date to +7 days when moving to TESTING (for build categories)
+        """
+        if self.pk:
+            # Task already exists - check for stage transitions
+            old_instance = TaskInstance.objects.get(pk=self.pk)
+            
+            # Auto-set start_date when moving to IN_PROGRESS
+            if old_instance.stage != self.IN_PROGRESS and self.stage == self.IN_PROGRESS:
+                if not self.start_date:
+                    self.start_date = timezone.now().date()
+            
+            # Auto-set end_date to +7 days when moving to TESTING (for build categories)
+            if old_instance.stage != self.TESTING and self.stage == self.TESTING:
+                if self.category in self.BUILD_CATEGORIES and not self.end_date:
+                    self.end_date = timezone.now().date() + timezone.timedelta(days=7)
+            
+            # Auto-set end_date when moving to DONE
+            if old_instance.stage != self.DONE and self.stage == self.DONE:
+                if not self.end_date:
+                    self.end_date = timezone.now().date()
+        
+        super().save(*args, **kwargs)
 
 
 class TaskNote(models.Model):

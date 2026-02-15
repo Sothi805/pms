@@ -89,7 +89,27 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
+
+# Date format for templates (dd/mm/yyyy)
+DATE_FORMAT = 'd/m/Y'
+SHORT_DATE_FORMAT = 'd/m/Y'
+DATETIME_FORMAT = 'd/m/Y H:i'
+SHORT_DATETIME_FORMAT = 'd/m/Y H:i'
+
+# Date input formats - accept both dd/mm/yyyy and yyyy-mm-dd (for HTML5 inputs)
+DATE_INPUT_FORMATS = [
+    '%d/%m/%Y',     # dd/mm/yyyy
+    '%Y-%m-%d',     # yyyy-mm-dd (HTML5 format)
+    '%d/%m/%y',     # dd/mm/yy
+    '%d.%m.%Y',     # dd.mm.yyyy
+    '%d.%m.%y',     # dd.mm.yy
+    '%d-%m-%Y',     # dd-mm-yyyy
+    '%d-%m-%y',     # dd-mm-yy
+    '%m/%d/%Y',     # mm/dd/yyyy
+    '%m/%d/%y',     # mm/dd/yy
+]
 
 # ── Static ────────────────────────────────────────────
 STATIC_URL = 'static/'

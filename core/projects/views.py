@@ -14,14 +14,14 @@ User = get_user_model()
 @login_required
 def project_list(request):
     user = request.user
-    if user.is_system_admin() or user.has_perm_manage_projects():
+    if user.is_system_admin():
         projects = Project.objects.select_related("organization").all()
     else:
         # Get organizations user belongs to
         user_orgs = user.member_organizations.values_list('id', flat=True)
         
-        # All org members see all projects in their organizations
-        # Their role determines what they can do within those projects
+        # All users only see projects in their organizations
+        # Their role (manage_projects, member, etc) determines what they can do within those projects
         projects = Project.objects.filter(
             organization_id__in=user_orgs
         ).select_related("organization").distinct()
@@ -50,7 +50,13 @@ def project_create(request):
         )
         messages.success(request, f"Project '{project.name}' created.")
         return redirect("projects:project_detail", pk=project.pk)
-    return render(request, "projects/project_form.html", {"form": form, "title": "Create Project"})
+    return render(request, "projects/project_form.html", {
+        "form": form, 
+        "title": "Create Project",
+        "existing_members": [],
+        "existing_commenters": [],
+        "existing_viewers": [],
+    })
 
 
 def _ensure_category_order(project):
@@ -74,6 +80,14 @@ def project_detail(request, pk):
 
     # Ensure categories have proper order values
     _ensure_category_order(project)
+    
+    # Get tasks without a project category
+    from tasks.models import TaskInstance
+    uncategorized_tasks = TaskInstance.objects.filter(
+        project=project,
+        project_category__isnull=True,
+        is_closed=False
+    ).select_related("created_by").prefetch_related("assignees").order_by("-created_at")
     
     notes = project.notes.select_related("author").all()
     note_form = ProjectNoteForm()
@@ -100,6 +114,7 @@ def project_detail(request, pk):
         "note_form": note_form,
         "can_add_notes": can_add_notes,
         "audit_logs": audit_logs,
+        "uncategorized_tasks": uncategorized_tasks,
     })
 
 
@@ -110,6 +125,13 @@ def project_edit(request, pk):
         return redirect("projects:project_list")
 
     project = get_object_or_404(Project, pk=pk)
+    user = request.user
+    
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
     form = ProjectForm(request.POST or None, instance=project)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -122,14 +144,29 @@ def project_edit(request, pk):
         )
         messages.success(request, f"Project '{project.name}' updated.")
         return redirect("projects:project_detail", pk=pk)
-    return render(request, "projects/project_form.html", {"form": form, "title": f"Edit — {project.name}"})
+    return render(request, "projects/project_form.html", {
+        "form": form,
+        "title": f"Edit — {project.name}",
+        "existing_members": list(project.members.values_list("username", flat=True)),
+        "existing_commenters": list(project.commenters.values_list("username", flat=True)),
+        "existing_viewers": list(project.viewers.values_list("username", flat=True)),
+    })
 
 
 @login_required
 def note_delete(request, pk):
     note = get_object_or_404(ProjectNote, pk=pk)
-    project_pk = note.project.pk
-    if request.user == note.author or request.user.is_system_admin():
+    project = note.project
+    project_pk = project.pk
+    user = request.user
+    
+    # Check organization membership
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
+    # Check if user is note author or system admin
+    if user == note.author or user.is_system_admin():
         note.delete()
         messages.success(request, "Note deleted.")
     else:
@@ -142,8 +179,13 @@ def category_create(request, project_pk):
     project = get_object_or_404(Project, pk=project_pk)
     user = request.user
     
-    # Only superusers or members can manage categories
-    can_manage = user.is_system_admin() or user.has_perm_manage_projects() or project.user_is_member(user)
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
+    # Only system admins or members can manage categories
+    can_manage = user.is_system_admin() or project.user_is_member(user)
     
     if not can_manage:
         messages.error(request, "Permission denied.")
@@ -170,8 +212,13 @@ def category_edit(request, category_pk):
     project = category.project
     user = request.user
     
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
     # Only system admins or members can manage categories
-    can_manage = user.is_system_admin() or user.has_perm_manage_projects() or project.user_is_member(user)
+    can_manage = user.is_system_admin() or project.user_is_member(user)
     
     if not can_manage:
         messages.error(request, "Permission denied.")
@@ -196,8 +243,13 @@ def category_delete(request, category_pk):
     project = category.project
     user = request.user
     
-    # Only superusers or members can manage categories
-    can_manage = user.is_system_admin() or user.has_perm_manage_projects() or project.user_is_member(user)
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
+    # Only system admins or members can manage categories
+    can_manage = user.is_system_admin() or project.user_is_member(user)
     
     if not can_manage:
         messages.error(request, "Permission denied.")
@@ -222,8 +274,13 @@ def category_move_up(request, category_pk):
     project = category.project
     user = request.user
     
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
     # Only system admins or members can manage categories
-    can_manage = user.is_system_admin() or user.has_perm_manage_projects() or project.user_is_member(user)
+    can_manage = user.is_system_admin() or project.user_is_member(user)
     
     if not can_manage:
         messages.error(request, "Permission denied.")
@@ -257,8 +314,13 @@ def category_move_down(request, category_pk):
     project = category.project
     user = request.user
     
-    # Only superusers or members can manage categories
-    can_manage = user.is_system_admin() or user.has_perm_manage_projects() or project.user_is_member(user)
+    # Verify user is member of project's organization
+    if not (user.is_system_admin() or project.organization.user_is_member(user)):
+        messages.error(request, "Permission denied.")
+        return redirect("projects:project_list")
+    
+    # Only system admins or members can manage categories
+    can_manage = user.is_system_admin() or project.user_is_member(user)
     
     if not can_manage:
         messages.error(request, "Permission denied.")

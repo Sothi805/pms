@@ -18,7 +18,41 @@ GLASS_SELECT = (
 )
 
 
+class DateInput(forms.DateInput):
+    """Custom date input widget with dd/mm/yyyy format."""
+    input_type = 'text'
+    
+    def __init__(self, attrs=None, format=None):
+        default_attrs = {
+            'placeholder': 'dd/mm/yyyy',
+            'pattern': r'\d{2}/\d{2}/\d{4}',
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs, format='%d/%m/%Y')
+    
+    def format_value(self, value):
+        """Format date value as dd/mm/yyyy for display."""
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            return value
+        return value.strftime('%d/%m/%Y') if hasattr(value, 'strftime') else value
+
+
 class ProjectForm(forms.ModelForm):
+    planned_start_date = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
+    
+    planned_end_date = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
+    
     members_search = forms.CharField(
         label="Members (Full Access)",
         required=False,
@@ -52,7 +86,7 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ["name", "description", "organization"]
+        fields = ["name", "description", "organization", "planned_start_date", "planned_end_date"]
         widgets = {
             "name": forms.TextInput(
                 attrs={"class": GLASS_INPUT, "placeholder": "Project name"}
@@ -61,6 +95,12 @@ class ProjectForm(forms.ModelForm):
                 attrs={"class": GLASS_INPUT, "placeholder": "Description", "rows": 3}
             ),
             "organization": forms.Select(attrs={"class": GLASS_SELECT}),
+            "planned_start_date": DateInput(
+                attrs={"class": GLASS_INPUT}
+            ),
+            "planned_end_date": DateInput(
+                attrs={"class": GLASS_INPUT}
+            ),
         }
 
     def clean_members_search(self):

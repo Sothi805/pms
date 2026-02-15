@@ -31,10 +31,31 @@
                 </div>
             </div>
             {% if not task.is_closed %}
-            <a href="{% url 'tasks:task_edit' task.pk %}"
-               class="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 text-sm font-medium rounded-xl transition-all">
-                Edit
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'tasks:task_edit' task.pk %}"
+                   class="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 text-sm font-medium rounded-xl transition-all">
+                    Edit
+                </a>
+                <!-- Move Task Button (Click Dropdown) -->
+                <div class="relative">
+                    <button onclick="toggleMoveDropdown()" class="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium rounded-xl transition-all border border-blue-400/30 flex items-center gap-2">
+                        <span>{{ task.get_stage_display }}</span>
+                        <svg id="dropdownArrow" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div id="moveDropdown" class="absolute right-0 mt-2 w-48 bg-slate-900/95 border border-white/10 rounded-xl shadow-xl hidden z-10 backdrop-blur-sm overflow-hidden">
+                        {% for stage_key, stage_label in task.get_available_moves %}
+                        <form method="post" action="{% url 'tasks:task_move' task.pk %}" class="block">
+                            {% csrf_token %}
+                            <input type="hidden" name="stage" value="{{ stage_key }}">
+                            <button type="submit" class="w-full text-left px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-blue-500/20 transition-colors border-b border-white/5 last:border-b-0">
+                                → {{ stage_label }}
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
             {% endif %}
         </div>
 
@@ -60,7 +81,7 @@
             </div>
             <div>
                 <p class="text-xs text-white/40 mb-1">Deadline</p>
-                <p class="text-sm text-white/80">{{ task.deadline|date:"M d, Y"|default:"None" }}</p>
+                <p class="text-sm text-white/80">{{ task.deadline|date:"d/m/Y"|default:"None" }}</p>
             </div>
             <div>
                 <p class="text-xs text-white/40 mb-1">Project Category</p>
@@ -74,6 +95,34 @@
                     {% endif %}
                 </p>
             </div>
+        </div>
+
+        <!-- Task Dates & Status -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {% if task.start_date %}
+            <div>
+                <p class="text-xs text-white/40 mb-1">Start Date</p>
+                <p class="text-sm text-white/80">{{ task.start_date|date:"d/m/Y" }}</p>
+            </div>
+            {% endif %}
+            {% if task.end_date %}
+            <div>
+                <p class="text-xs text-white/40 mb-1">End Date</p>
+                <p class="text-sm text-white/80">{{ task.end_date|date:"d/m/Y" }}</p>
+            </div>
+            {% endif %}
+            {% if task.due_status %}
+            <div>
+                <p class="text-xs text-white/40 mb-1">Due Status</p>
+                <p class="text-sm font-medium {% if "Overdue" in task.due_status %}text-red-400{% elif "Due in" in task.due_status %}text-yellow-400{% elif "Due today" in task.due_status %}text-orange-400{% endif %}">{{ task.due_status }}</p>
+            </div>
+            {% endif %}
+            {% if task.on_time_status %}
+            <div>
+                <p class="text-xs text-white/40 mb-1">On Time Status</p>
+                <p class="text-sm font-medium {% if "On Time" in task.on_time_status %}text-emerald-400{% else %}text-red-400{% endif %}">{{ task.on_time_status }}</p>
+            </div>
+            {% endif %}
         </div>
 
         <!-- People -->
@@ -158,7 +207,7 @@
                 <div class="flex items-start justify-between mb-2">
                     <div>
                         <p class="text-xs font-medium text-white/80">{{ note.author.username|default:"System" }}</p>
-                        <p class="text-[10px] text-white/40">{{ note.created_at|date:"M d, Y H:i" }}</p>
+                        <p class="text-[10px] text-white/40">{{ note.created_at|date:"d/m/Y H:i" }}</p>
                     </div>
                 </div>
                 <p class="text-sm text-white/70 leading-relaxed">{{ note.content }}</p>
@@ -179,7 +228,7 @@
                 <div class="flex-1 min-w-0">
                     <p class="text-xs text-white/60">{{ log.detail }}</p>
                     <p class="text-[10px] text-white/30 mt-0.5">
-                        {{ log.actor.username|default:"System" }} · {{ log.timestamp|date:"M d, Y H:i" }}
+                        {{ log.actor.username|default:"System" }} · {{ log.timestamp|date:"d/m/Y H:i" }}
                     </p>
                 </div>
             </div>
@@ -189,4 +238,23 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleMoveDropdown() {
+    const dropdown = document.getElementById('moveDropdown');
+    const arrow = document.getElementById('dropdownArrow');
+    dropdown.classList.toggle('hidden');
+    arrow.style.transform = dropdown.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('moveDropdown');
+    const button = event.target.closest('button[onclick="toggleMoveDropdown()"]');
+    if (!button && !dropdown.contains(event.target)) {
+        dropdown.classList.add('hidden');
+        document.getElementById('dropdownArrow').style.transform = 'rotate(0deg)';
+    }
+});
+</script>
 {% endblock %}

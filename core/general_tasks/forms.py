@@ -24,7 +24,35 @@ GLASS_TEXTAREA = (
 )
 
 
+class DateInput(forms.DateInput):
+    """Custom date input widget with dd/mm/yyyy format."""
+    input_type = 'text'
+    
+    def __init__(self, attrs=None, format=None):
+        default_attrs = {
+            'placeholder': 'dd/mm/yyyy',
+            'pattern': r'\d{2}/\d{2}/\d{4}',
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs, format='%d/%m/%Y')
+    
+    def format_value(self, value):
+        """Format date value as dd/mm/yyyy for display."""
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            return value
+        return value.strftime('%d/%m/%Y') if hasattr(value, 'strftime') else value
+
+
 class GeneralTaskForm(forms.ModelForm):
+    due_date = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
+    
     assigned_to_search = forms.CharField(
         label="Assigned to",
         required=False,
@@ -51,10 +79,6 @@ class GeneralTaskForm(forms.ModelForm):
             }),
             "status": forms.Select(attrs={"class": GLASS_SELECT}),
             "priority": forms.Select(attrs={"class": GLASS_SELECT}),
-            "due_date": forms.DateInput(attrs={
-                "class": GLASS_INPUT,
-                "type": "date",
-            }),
         }
     
     def __init__(self, *args, **kwargs):

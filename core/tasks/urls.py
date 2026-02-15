@@ -8,6 +8,8 @@ urlpatterns = [
     path("board/<int:project_pk>/", views.task_board, name="task_board"),
     path("create/<int:project_pk>/", views.task_create, name="task_create"),
     path("<int:pk>/", views.task_detail, name="task_detail"),
+    path("<int:pk>/detail/", views.task_detail, name="task_detail_page"),
+    path("<int:pk>/api-detail/", views.task_api_detail, name="task_api_detail"),
     path("<int:pk>/edit/", views.task_edit, name="task_edit"),
     path("<int:pk>/move/", views.task_move, name="task_move"),
 ]

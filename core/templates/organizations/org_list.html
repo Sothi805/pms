@@ -22,7 +22,7 @@
         <div class="flex-1 min-w-0">
             <h3 class="text-sm font-semibold text-white">{{ org.name }}</h3>
             <p class="text-xs text-white/40 mt-1 line-clamp-2">{{ org.description|truncatewords:30|default:"No description" }}</p>
-            <p class="text-xs text-white/30 mt-2">Created {{ org.created_at|date:"M d, Y" }} · {{ org.projects.count }} projects · {{ org.members.count }} members</p>
+            <p class="text-xs text-white/30 mt-2">Created {{ org.created_at|date:"d/m/Y" }} · {{ org.projects.count }} projects · {{ org.members.count }} members</p>
         </div>
         {% if user.is_system_admin %}
         <div class="flex items-center gap-2 flex-shrink-0">

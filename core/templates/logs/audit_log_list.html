@@ -27,7 +27,7 @@
             </div>
             <p class="text-sm text-white/60 line-clamp-2 sm:line-clamp-none">{{ log.detail }}</p>
             <p class="text-[10px] text-white/30 mt-0.5 truncate">
-                {{ log.actor.username|default:"System" }} · {{ log.timestamp|date:"M d, Y H:i:s" }}
+                {{ log.actor.username|default:"System" }} · {{ log.timestamp|date:"d/m/Y H:i:s" }}
             </p>
         </div>
     </div>

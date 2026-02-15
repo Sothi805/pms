@@ -8,7 +8,7 @@
         overflow-x: auto; 
         overflow-y: auto;
         scroll-behavior: smooth;
-    }
+    }   
     .board-scroll::-webkit-scrollbar {
         height: 8px;
     }
@@ -123,16 +123,15 @@
 
             {% if stg_data.tasks %}
                 {% for task in stg_data.tasks %}
-                <div class="glass-card rounded-xl p-3 task-card-drag transition-all hover:shadow-lg hover:shadow-blue-500/20"
+                <div class="glass-card rounded-xl p-3 task-card-drag transition-all hover:shadow-lg hover:shadow-blue-500/20 cursor-pointer"
                      draggable="{% if can_move %}true{% else %}false{% endif %}"
                      data-task-id="{{ task.pk }}"
                      data-category="{{ task.category }}"
                      data-stage="{{ task.stage }}"
+                     onclick="openTaskModal(event, {{ task.pk }})"
                      ondragstart="handleDragStart(event)"
                      ondragend="handleDragEnd(event)">
-                    <a href="{% url 'tasks:task_detail' task.pk %}" class="block group">
-                        <p class="text-sm font-medium text-white/90 group-hover:text-blue-300 transition-colors mb-2 line-clamp-2">{{ task.title }}</p>
-                    </a>
+                    <p class="text-sm font-medium text-white/90 group-hover:text-blue-300 transition-colors mb-2">{{ task.title }}</p>
                     
                     <!-- Task Meta -->
                     <div class="flex flex-wrap gap-1 mb-2">
@@ -142,22 +141,50 @@
                         {% endif %}
                     </div>
                     
-                    <!-- Deadline -->
-                    {% if task.deadline %}
-                    <p class="text-xs text-white/40 mb-2">{{ task.deadline|date:"M d, Y" }}</p>
-                    {% endif %}
+                    <!-- Dates: Deadline or Start/End -->
+                    <div class="text-xs text-white/40 mb-2 space-y-1">
+                        {% if task.deadline %}
+                        <p>Deadline: {{ task.deadline|date:"d/m/Y" }}</p>
+                        {% else %}
+                            {% if task.start_date %}
+                            <p>🚀 Start Date: {{ task.start_date|date:"d/m/Y" }}</p>
+                            {% endif %}
+                            {% if task.end_date %}
+                            <p>🏁 End Date: {{ task.end_date|date:"d/m/Y" }}</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Status Badges -->
+                    <div class="flex flex-wrap gap-1 mb-2">
+                        {% if task.stage_status %}
+                        <span class="inline-block text-[11px] px-1.5 py-0.5 rounded-full {% if "Pending" in task.stage_status %}bg-yellow-500/20 text-yellow-300 border border-yellow-400/20{% else %}bg-orange-500/20 text-orange-300 border border-orange-400/20{% endif %} whitespace-nowrap">
+                            {{ task.stage_status }}
+                        </span>
+                        {% endif %}
+                        {% if task.due_status %}
+                        <span class="inline-block text-[11px] px-1.5 py-0.5 rounded-full {% if "Overdue" in task.due_status %}bg-red-500/20 text-red-300 border border-red-400/20{% elif "Due today" in task.due_status %}bg-orange-500/20 text-orange-300 border border-orange-400/20{% else %}bg-yellow-500/20 text-yellow-300 border border-yellow-400/20{% endif %} whitespace-nowrap">
+                            {{ task.due_status }}
+                        </span>
+                        {% endif %}
+                        {% if task.on_time_status %}
+                        <span class="inline-block text-[11px] px-1.5 py-0.5 rounded-full {% if "On Time" in task.on_time_status %}bg-emerald-500/20 text-emerald-300 border border-emerald-400/20{% else %}bg-red-500/20 text-red-300 border border-red-400/20{% endif %} whitespace-nowrap">
+                            {{ task.on_time_status }}
+                        </span>
+                        {% endif %}
+                    </div>
                     
                     <!-- Assignees -->
                     {% if task.assignees.all %}
-                    <div class="flex items-center gap-1">
-                        {% for assignee in task.assignees.all|slice:":4" %}
-                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-[11px] text-white font-semibold border border-white/10" title="{{ assignee.username }}">
-                            {{ assignee.username.0|upper }}
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        {% for assignee in task.assignees.all %}
+                        <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-[10px] text-white font-semibold" title="{{ assignee.username }}">
+                                {{ assignee.username.0|upper }}
+                            </div>
+                            <span class="text-xs text-blue-300">{{ assignee.username }}</span>
                         </div>
                         {% endfor %}
-                        {% if task.assignees.all|length > 4 %}
-                        <span class="text-[10px] text-white/40 ml-1">+{{ task.assignees.all|length|add:"-4" }}</span>
-                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -177,14 +204,235 @@
     <div class="glass rounded-xl px-4 py-3 text-sm max-w-sm"></div>
 </div>
 
+<!-- Task Detail Modal -->
+<div id="taskModal" class="fixed inset-0 bg-white/1 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div class="glass rounded-2xl max-w-2xl w-full my-8 p-6 sm:p-8">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-white">Task Details</h2>
+            <button onclick="closeTaskModal()" class="text-white/60 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        
+        <!-- Modal Content -->
+        <div id="taskModalContent" class="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <div class="flex justify-center">
+                <svg class="animate-spin h-8 w-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex flex-col sm:flex-row gap-3 mt-6 pt-6 border-t border-white/10">
+            <a id="taskDetailLink" href="#" class="px-4 py-2.5 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all text-center">
+                Open in Full Page
+            </a>
+            <button onclick="closeTaskModal()" class="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white/60 text-sm font-medium rounded-xl transition-all">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+// Task Modal Functions
+function openTaskModal(event, taskId) {
+    // Don't open modal if currently dragging
+    if (isDragging) {
+        return;
+    }
+    event.stopPropagation();
+    
+    const modal = document.getElementById('taskModal');
+    const content = document.getElementById('taskModalContent');
+    const detailLink = document.getElementById('taskDetailLink');
+    
+    // Set the full page link
+    detailLink.href = `/tasks/${taskId}/detail/`;
+    
+    // Show modal with loading state
+    modal.classList.remove('hidden');
+    content.innerHTML = `
+        <div class="flex justify-center">
+            <svg class="animate-spin h-8 w-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    `;
+    
+    // Fetch task details
+    fetch(`/tasks/${taskId}/api-detail/`)
+        .then(response => response.json())
+        .then(data => {
+            renderTaskModal(data);
+        })
+        .catch(err => {
+            content.innerHTML = `<p class="text-red-300 text-center">Error loading task details. <a href="/tasks/${taskId}/detail/" class="text-blue-300 hover:text-blue-200">Open in full page</a></p>`;
+        });
+}
+
+function closeTaskModal() {
+    document.getElementById('taskModal').classList.add('hidden');
+}
+
+function renderTaskModal(task) {
+    const content = document.getElementById('taskModalContent');
+    
+    const getStageColor = (stage) => {
+        const colors = {
+            'TODO': 'bg-slate-500/20 text-slate-300',
+            'IN_PROGRESS': 'bg-blue-500/20 text-blue-300',
+            'TESTING': 'bg-purple-500/20 text-purple-300',
+            'DONE': 'bg-emerald-500/20 text-emerald-300',
+            'REJECT': 'bg-red-500/20 text-red-300'
+        };
+        return colors[stage] || 'bg-slate-500/20 text-slate-300';
+    };
+    
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'None';
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+    
+    content.innerHTML = `
+        <!-- Title & Status -->
+        <div>
+            <h3 class="text-lg font-semibold text-white mb-2">${task.title}</h3>
+            <div class="flex flex-wrap gap-2">
+                <span class="text-xs px-2.5 py-1 rounded-full ${getStageColor(task.stage)} font-medium">
+                    ${task.stage_display}
+                </span>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 font-medium">
+                    ${task.category_display}
+                </span>
+                ${task.is_closed ? '<span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-white/30 font-medium">Closed</span>' : ''}
+            </div>
+        </div>
+
+        <!-- Description -->
+        ${task.description ? `
+        <div>
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Description</p>
+            <p class="text-sm text-white/70 leading-relaxed">${task.description}</p>
+        </div>
+        ` : ''}
+
+        <!-- Meta Information -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
+            <div>
+                <p class="text-xs text-white/40 mb-1">Story Points</p>
+                <p class="text-sm font-medium text-white/80">${task.story_points || 'N/A'}</p>
+            </div>
+            <div>
+                <p class="text-xs text-white/40 mb-1">Deadline</p>
+                <p class="text-sm font-medium text-white/80">${formatDate(task.deadline)}</p>
+            </div>
+            <div>
+                <p class="text-xs text-white/40 mb-1">Created By</p>
+                <p class="text-sm font-medium text-white/80">${task.created_by}</p>
+            </div>
+            <div>
+                <p class="text-xs text-white/40 mb-1">Start Date</p>
+                <p class="text-sm font-medium text-white/80">${formatDate(task.start_date)}</p>
+            </div>
+            <div>
+                <p class="text-xs text-white/40 mb-1">End Date</p>
+                <p class="text-sm font-medium text-white/80">${formatDate(task.end_date)}</p>
+            </div>
+            <div>
+                <p class="text-xs text-white/40 mb-1">Points Earned</p>
+                <p class="text-sm font-medium ${task.points_earned ? 'text-emerald-300' : 'text-white/40'}">
+                    ${task.points_earned ? 'Yes' : 'No'}
+                </p>
+            </div>
+        </div>
+
+        <!-- Status Badges -->
+        ${(task.due_status || task.on_time_status || task.stage_status) ? `
+        <div class="flex flex-wrap gap-2">
+            ${task.stage_status ? `
+                <span class="text-sm px-3 py-1.5 rounded-full font-medium
+                    ${task.stage_status.includes('Pending') ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/20' : 
+                      'bg-orange-500/20 text-orange-300 border border-orange-500/20'}">
+                    ${task.stage_status}
+                </span>
+            ` : ''}
+            ${task.due_status ? `
+                <span class="text-sm px-3 py-1.5 rounded-full font-medium
+                    ${task.due_status.includes('Overdue') ? 'bg-red-500/20 text-red-300 border border-red-500/20' : 
+                      task.due_status.includes('today') ? 'bg-orange-500/20 text-orange-300 border border-orange-500/20' : 
+                      'bg-yellow-500/20 text-yellow-300 border border-yellow-500/20'}">
+                    ${task.due_status}
+                </span>
+            ` : ''}
+            ${task.on_time_status ? `
+                <span class="text-sm px-3 py-1.5 rounded-full font-medium
+                    ${task.on_time_status === 'On Time' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/20' : 
+                      'bg-red-500/20 text-red-300 border border-red-500/20'}">
+                    ${task.on_time_status}
+                </span>
+            ` : ''}
+        </div>
+        ` : ''}
+
+
+        <!-- Assignees -->
+        ${task.assignees.length > 0 ? `
+        <div>
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Assignees</p>
+            <div class="flex flex-wrap gap-2">
+                ${task.assignees.map(a => `
+                    <span class="inline-flex items-center text-xs bg-blue-500/10 text-blue-300 px-3 py-1.5 rounded-full border border-blue-500/20">
+                        ${a}
+                    </span>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Project Category -->
+        ${task.project_category ? `
+        <div>
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Project Category</p>
+            <span class="inline-block px-3 py-1.5 rounded-full bg-purple-500/15 text-purple-300 text-sm border border-purple-500/20">
+                ${task.project_category}
+            </span>
+        </div>
+        ` : ''}
+    `;
+}
+
+// Mark modal to close with ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeTaskModal();
+    }
+});
+
+// Close modal when clicking outside
+document.getElementById('taskModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'taskModal') {
+        closeTaskModal();
+    }
+});
+
 let draggedElement = null;
 let draggedTaskId = null;
+let isDragging = false;
 
 function handleDragStart(e) {
+    isDragging = true;
     draggedElement = e.target.closest('[data-task-id]');
     draggedTaskId = draggedElement.dataset.taskId;
     draggedElement.classList.add('opacity-50');
@@ -199,6 +447,7 @@ function handleDragEnd(e) {
     document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drop-indicator', 'over'));
     draggedElement = null;
     draggedTaskId = null;
+    isDragging = false;
 }
 
 function handleDragOver(e) {
@@ -248,10 +497,8 @@ async function handleDrop(e) {
             location.reload();
         } else {
             showToast('Task moved successfully', 'success');
-            // If the task was closed (DONE/REJECT), reload to reflect new clones
-            if (newStage === 'DONE' || newStage === 'REJECT') {
-                setTimeout(() => location.reload(), 800);
-            }
+            // Reload to update task counts and positions
+            setTimeout(() => location.reload(), 600);
         }
     } catch (err) {
         showToast('Network error', 'error');

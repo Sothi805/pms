@@ -18,6 +18,28 @@ GLASS_SELECT = (
 )
 
 
+class DateInput(forms.DateInput):
+    """Custom date input widget with dd/mm/yyyy format."""
+    input_type = 'text'
+    
+    def __init__(self, attrs=None, format=None):
+        default_attrs = {
+            'placeholder': 'dd/mm/yyyy',
+            'pattern': r'\d{2}/\d{2}/\d{4}',
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs, format='%d/%m/%Y')
+    
+    def format_value(self, value):
+        """Format date value as dd/mm/yyyy for display."""
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            return value
+        return value.strftime('%d/%m/%Y') if hasattr(value, 'strftime') else value
+
+
 class TaskInstanceForm(forms.ModelForm):
     assignees_search = forms.CharField(
         label="Assignees",
@@ -29,6 +51,24 @@ class TaskInstanceForm(forms.ModelForm):
             "data-field-type": "user-search-multi",
         }),
     )
+    
+    deadline = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
+    
+    start_date = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
+    
+    end_date = forms.DateField(
+        required=False,
+        input_formats=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%y', '%d-%m-%Y'],
+        widget=DateInput(attrs={"class": GLASS_INPUT})
+    )
 
     class Meta:
         model = TaskInstance
@@ -37,9 +77,10 @@ class TaskInstanceForm(forms.ModelForm):
             "description",
             "category",
             "project_category",
-            "stage",
             "story_points",
             "deadline",
+            "start_date",
+            "end_date",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -50,12 +91,8 @@ class TaskInstanceForm(forms.ModelForm):
             ),
             "category": forms.Select(attrs={"class": GLASS_SELECT}),
             "project_category": forms.Select(attrs={"class": GLASS_SELECT}),
-            "stage": forms.Select(attrs={"class": GLASS_SELECT}),
             "story_points": forms.NumberInput(
                 attrs={"class": GLASS_INPUT, "placeholder": "Story points", "min": 0}
-            ),
-            "deadline": forms.DateInput(
-                attrs={"class": GLASS_INPUT, "type": "date"}
             ),
         }
 

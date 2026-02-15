@@ -37,7 +37,7 @@ def logout_view(request):
 
 
 def user_list(request):
-    if not request.user.has_perm_create_users():
+    if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
         return redirect("dashboard")
     users = User.objects.select_related("role").all()
@@ -45,7 +45,7 @@ def user_list(request):
 
 
 def user_create(request):
-    if not request.user.has_perm_create_users():
+    if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
         return redirect("dashboard")
 
@@ -73,7 +73,7 @@ def user_create(request):
 
 
 def user_edit(request, pk):
-    if not request.user.has_perm_create_users():
+    if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
         return redirect("dashboard")
 
@@ -182,13 +182,21 @@ def settings_view(request):
             login(request, user)
             return redirect("accounts:settings")
     
-    return render(request, "accounts/settings.html", {"form": form})
+    organizations = request.user.member_organizations.all()
+    return render(request, "accounts/settings.html", {
+        "form": form,
+        "organizations": organizations
+    })
 
 
 @login_required
 @require_http_methods(["GET"])
 def search_users(request):
     """API endpoint to search for active users by username or email."""
+    # Allow system admins and users who can manage tasks (for assignee autocomplete)
+    if not (request.user.is_system_admin() or request.user.has_perm_manage_tasks()):
+        return JsonResponse({"error": "Permission denied."}, status=403)
+    
     query = request.GET.get("q", "").strip()
     
     if not query or len(query) < 1:

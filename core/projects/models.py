@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class ProjectCategory(models.Model):
@@ -61,6 +62,8 @@ class Project(models.Model):
         on_delete=models.CASCADE,
         related_name="projects",
     )
+    planned_start_date = models.DateField(null=True, blank=True, help_text="Planned project start date")
+    planned_end_date = models.DateField(null=True, blank=True, help_text="Planned project completion date")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -140,6 +143,25 @@ class Project(models.Model):
         return list(
             self.categories.prefetch_related("tasks").order_by("order", "-created_at")
         )
+
+    @property
+    def due_status(self):
+        """Returns 'Due in X days', 'Overdue X days', or None if no planned end date.
+        
+        Based on planned_end_date vs today.
+        """
+        if not self.planned_end_date:
+            return None
+        
+        today = timezone.now().date()
+        days_diff = (self.planned_end_date - today).days
+        
+        if days_diff > 0:
+            return f"Due in {days_diff} day{'s' if days_diff != 1 else ''}"
+        elif days_diff == 0:
+            return "Due today"
+        else:
+            return f"Overdue {abs(days_diff)} day{'s' if abs(days_diff) != 1 else ''}"
 
     def user_is_member(self, user):
         """Check if user has member access to this project.

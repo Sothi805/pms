@@ -119,15 +119,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (fieldType === 'user-search-single') {
                     field.value = user.username;
                 } else {
-                    // For multi-select, add to comma-separated list
+                    // For multi-select, append to comma-separated list
                     const currentValue = field.value.trim();
-                    const lastCommaIndex = currentValue.lastIndexOf(',');
-                    let beforeLastItem = '';
-                    
-                    if (lastCommaIndex !== -1) {
-                        beforeLastItem = currentValue.substring(0, lastCommaIndex + 1) + ' ';
+                    if (currentValue) {
+                        field.value = currentValue + ', ' + user.username;
+                    } else {
+                        field.value = user.username;
                     }
-                    field.value = beforeLastItem + user.username;
                 }
                 suggestionsDiv.classList.add('hidden');
             });
@@ -139,3 +137,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+{% endblock %}

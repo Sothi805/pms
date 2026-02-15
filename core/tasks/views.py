@@ -146,6 +146,42 @@ def task_detail(request, pk):
 
 
 @login_required
+def task_api_detail(request, pk):
+    """API endpoint to get task details as JSON for modal display."""
+    task = get_object_or_404(
+        TaskInstance.objects.select_related("project", "created_by", "parent_task", "project_category")
+        .prefetch_related("assignees", "children"),
+        pk=pk,
+    )
+    
+    # Get display labels for choices
+    stage_display = dict(TaskInstance.STAGE_CHOICES).get(task.stage, task.stage)
+    category_display = dict(TaskInstance.CATEGORY_CHOICES).get(task.category, task.category)
+    
+    return JsonResponse({
+        "id": task.pk,
+        "title": task.title,
+        "description": task.description,
+        "stage": task.stage,
+        "stage_display": stage_display,
+        "category": task.category,
+        "category_display": category_display,
+        "story_points": task.story_points,
+        "points_earned": task.points_earned,
+        "deadline": task.deadline.isoformat() if task.deadline else None,
+        "start_date": task.start_date.isoformat() if task.start_date else None,
+        "end_date": task.end_date.isoformat() if task.end_date else None,
+        "due_status": task.due_status,
+        "on_time_status": task.on_time_status,
+        "stage_status": task.stage_status,
+        "is_closed": task.is_closed,
+        "created_by": task.created_by.username if task.created_by else "System",
+        "assignees": [a.username for a in task.assignees.all()],
+        "project_category": task.project_category.name if task.project_category else None,
+    })
+
+
+@login_required
 def task_edit(request, pk):
     task = get_object_or_404(TaskInstance, pk=pk)
     if not (request.user.is_superuser or request.user.has_perm_manage_tasks()):
@@ -177,39 +213,66 @@ def task_edit(request, pk):
 
 @require_POST
 @login_required
+@login_required
+@require_POST
 def task_move(request, pk):
     """Drag-and-drop handler: move task to a new stage (and optionally category)."""
     task = get_object_or_404(TaskInstance, pk=pk)
     user = request.user
 
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    # Handle both JSON (from board) and form data (from detail page)
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+    else:
+        # Form data from detail page
+        data = request.POST.dict()
 
     new_stage = data.get("stage")
     new_category = data.get("category")  # optional, for category moves
 
     if task.is_closed:
-        return JsonResponse({"error": "Task is closed."}, status=403)
+        if request.content_type == 'application/json':
+            return JsonResponse({"error": "Task is closed."}, status=403)
+        else:
+            messages.error(request, "Task is closed and cannot be moved.")
+            return redirect("tasks:task_detail", pk=pk)
 
     # ── Permission checks ──
     if new_category and new_category != task.category:
         if not (user.is_system_admin() or user.has_perm_move_task_categories()):
-            return JsonResponse({"error": "No permission to move categories."}, status=403)
+            error_msg = "No permission to move categories."
+            if request.content_type == 'application/json':
+                return JsonResponse({"error": error_msg}, status=403)
+            messages.error(request, error_msg)
+            return redirect("tasks:task_detail", pk=pk)
 
     if new_stage and new_stage != task.stage:
         if not (user.is_system_admin() or user.has_perm_move_task_stages()):
-            return JsonResponse({"error": "No permission to move stages."}, status=403)
+            error_msg = "No permission to move stages."
+            if request.content_type == 'application/json':
+                return JsonResponse({"error": error_msg}, status=403)
+            messages.error(request, error_msg)
+            return redirect("tasks:task_detail", pk=pk)
 
     # ── Validate stage ──
     valid_stages = [s[0] for s in TaskInstance.STAGE_CHOICES]
     if new_stage and new_stage not in valid_stages:
-        return JsonResponse({"error": "Invalid stage."}, status=400)
+        error_msg = "Invalid stage."
+        if request.content_type == 'application/json':
+            return JsonResponse({"error": error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect("tasks:task_detail", pk=pk)
 
     valid_cats = [c[0] for c in TaskInstance.CATEGORY_CHOICES]
     if new_category and new_category not in valid_cats:
-        return JsonResponse({"error": "Invalid category."}, status=400)
+        error_msg = "Invalid category."
+        if request.content_type == 'application/json':
+            return JsonResponse({"error": error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect("tasks:task_detail", pk=pk)
 
     old_stage = task.stage
     old_category = task.category
@@ -217,9 +280,17 @@ def task_move(request, pk):
     # ── REJECT can only occur in TESTING ──
     if new_stage == TaskInstance.REJECT:
         if task.category != TaskInstance.TESTING:
-            return JsonResponse({"error": "REJECT only allowed in TESTING."}, status=400)
+            error_msg = "REJECT only allowed in TESTING."
+            if request.content_type == 'application/json':
+                return JsonResponse({"error": error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect("tasks:task_detail", pk=pk)
         if not (user.is_system_admin() or user.has_perm_reject_testing()):
-            return JsonResponse({"error": "No permission to reject."}, status=403)
+            error_msg = "No permission to reject."
+            if request.content_type == 'application/json':
+                return JsonResponse({"error": error_msg}, status=403)
+            messages.error(request, error_msg)
+            return redirect("tasks:task_detail", pk=pk)
 
     # Apply category change
     if new_category and new_category != task.category:
@@ -246,7 +317,7 @@ def task_move(request, pk):
         project=task.project,
     )
 
-    # ── BUILD → DONE: earn points + clone to TESTING ──
+    # ── Handle stage transitions with cloning ──
     if new_stage == TaskInstance.DONE and old_stage != TaskInstance.DONE:
         if task.category in TaskInstance.BUILD_CATEGORIES:
             _handle_build_done(task, user)
@@ -260,6 +331,11 @@ def task_move(request, pk):
     # ── REJECT in TESTING: close + clone back ──
     if new_stage == TaskInstance.REJECT and task.category == TaskInstance.TESTING:
         _handle_testing_reject(task, user)
+
+    # For form submissions, redirect back to detail page
+    if request.content_type != 'application/json':
+        messages.success(request, f"Task moved to {dict(TaskInstance.STAGE_CHOICES).get(new_stage, new_stage)}")
+        return redirect("tasks:task_detail", pk=pk)
 
     return JsonResponse({"ok": True, "stage": task.stage, "category": task.category})
 

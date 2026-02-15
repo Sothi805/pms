@@ -29,44 +29,45 @@
 <div class="space-y-3">
     {% for task in tasks %}
     <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:bg-white/[0.07] transition-all cursor-pointer" onclick="window.location.href='{% url 'general_tasks:task_detail' task.pk %}'">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-start gap-2 mb-2">
-                    <h3 class="text-base sm:text-lg font-semibold text-white flex-1">{{ task.title }}</h3>
-                    <div class="flex gap-1 flex-wrap flex-shrink-0">
-                        <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap
-                            {% if task.priority == 'critical' %}bg-red-500/20 text-red-300
-                            {% elif task.priority == 'high' %}bg-orange-500/20 text-orange-300
-                            {% elif task.priority == 'medium' %}bg-yellow-500/20 text-yellow-300
-                            {% else %}bg-green-500/20 text-green-300{% endif %}">
-                            {{ task.get_priority_display }}
-                        </span>
-                        <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap
-                            {% if task.status == 'done' %}bg-green-500/20 text-green-300
-                            {% elif task.status == 'in_progress' %}bg-blue-500/20 text-blue-300
-                            {% else %}bg-gray-500/20 text-gray-300{% endif %}">
-                            {{ task.get_status_display }}
-                        </span>
-                    </div>
-                </div>
-                {% if task.description %}
-                <p class="text-white/60 text-sm mb-3">{{ task.description|truncatewords:20 }}</p>
-                {% endif %}
-                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-white/40">
-                    {% if task.assigned_to %}
-                    <span class="truncate">👤 Assigned to: <span class="text-white/60">{{ task.assigned_to.username }}</span></span>
-                    {% endif %}
-                    {% if task.due_date %}
-                    <span class="whitespace-nowrap">📅 Due: <span class="text-white/60">{{ task.due_date|date:"M d, Y" }}</span></span>
-                    {% endif %}
-                    <span class="whitespace-nowrap">Created: <span class="text-white/60">{{ task.created_at|date:"M d" }}</span></span>
-                </div>
+        <!-- Header with title, badges and actions -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2 flex-wrap flex-1">
+                <h3 class="text-base sm:text-lg font-semibold text-white">{{ task.title }}</h3>
+                <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap
+                    {% if task.priority == 'critical' %}bg-red-500/20 text-red-300
+                    {% elif task.priority == 'high' %}bg-orange-500/20 text-orange-300
+                    {% elif task.priority == 'medium' %}bg-yellow-500/20 text-yellow-300
+                    {% else %}bg-green-500/20 text-green-300{% endif %}">
+                    {{ task.get_priority_display }}
+                </span>
+                <span class="text-xs px-2 py-1 rounded-full whitespace-nowrap
+                    {% if task.status == 'done' %}bg-green-500/20 text-green-300
+                    {% elif task.status == 'in_progress' %}bg-blue-500/20 text-blue-300
+                    {% else %}bg-gray-500/20 text-gray-300{% endif %}">
+                    {{ task.get_status_display }}
+                </span>
             </div>
-            <div class="flex items-center gap-2 mt-3 sm:mt-0 sm:ml-4" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-2" onclick="event.stopPropagation()">
                 <a href="{% url 'general_tasks:task_edit' task.pk %}" class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Edit</a>
                 {% if user.is_system_admin or user == task.created_by %}
                 <a href="{% url 'general_tasks:task_delete' task.pk %}" class="px-3 py-1.5 text-xs text-red-300/60 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 rounded-lg transition-all">Delete</a>
                 {% endif %}
+            </div>
+        </div>
+        
+        <!-- Description and details -->
+        <div>
+            {% if task.description %}
+            <p class="text-white/60 text-sm mb-3">{{ task.description|truncatewords:20 }}</p>
+            {% endif %}
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-white/40">
+                {% if task.assigned_to %}
+                <span class="truncate">👤 Assigned to: <span class="text-white/60">{{ task.assigned_to.username }}</span></span>
+                {% endif %}
+                {% if task.due_date %}
+                <span class="whitespace-nowrap">📅 Due: <span class="text-white/60">{{ task.due_date|date:"d/m/Y" }}</span></span>
+                {% endif %}
+                <span class="whitespace-nowrap">Created: <span class="text-white/60">{{ task.created_at|date:"d/m/Y" }}</span></span>
             </div>
         </div>
     </div>

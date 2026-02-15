@@ -86,7 +86,7 @@
                     {% if task.due_date %}
                     <div>
                         <p class="text-white/40 mb-1">Due date</p>
-                        <p class="text-white">{{ task.due_date|date:"F d, Y" }}</p>
+                        <p class="text-white">{{ task.due_date|date:"d/m/Y" }}</p>
                     </div>
                     {% endif %}
                     
@@ -97,12 +97,12 @@
                     
                     <div>
                         <p class="text-white/40 mb-1">Created</p>
-                        <p class="text-white">{{ task.created_at|date:"F d, Y • H:i" }}</p>
+                        <p class="text-white">{{ task.created_at|date:"d/m/Y • H:i" }}</p>
                     </div>
                     
                     <div>
                         <p class="text-white/40 mb-1">Updated</p>
-                        <p class="text-white">{{ task.updated_at|date:"F d, Y • H:i" }}</p>
+                        <p class="text-white">{{ task.updated_at|date:"d/m/Y • H:i" }}</p>
                     </div>
                 </div>
             </div>

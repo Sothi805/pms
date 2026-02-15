@@ -79,7 +79,7 @@
             </a>
             {% endif %}
 
-            {% if user.is_system_admin or user.has_perm_create_users %}
+            {% if user.is_system_admin %}
             <a href="{% url 'accounts:user_list' %}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                       {% if 'users' in request.path %}bg-blue-500/15 text-blue-300{% else %}text-white/60 hover:text-white/90 hover:bg-white/5{% endif %}

@@ -66,6 +66,33 @@
 </div>
 {% endif %}
 
+<!-- Project Dates & Status -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+    {% if project.planned_start_date %}
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Planned Start</p>
+        <p class="text-lg sm:text-xl font-semibold text-white mt-2">{{ project.planned_start_date|date:"d/m/Y" }}</p>
+    </div>
+    {% endif %}
+    {% if project.planned_end_date %}
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Planned End</p>
+        <p class="text-lg sm:text-xl font-semibold text-white mt-2">{{ project.planned_end_date|date:"d/m/Y" }}</p>
+    </div>
+    {% endif %}
+    {% if project.due_status %}
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Status</p>
+        {% if "Overdue" in project.due_status %}
+        <p class="text-lg sm:text-xl font-semibold text-red-400 mt-2">{{ project.due_status }}</p>
+        {% elif "Due in" in project.due_status %}
+        <p class="text-lg sm:text-xl font-semibold text-yellow-400 mt-2">{{ project.due_status }}</p>
+        {% elif "Due today" in project.due_status %}
+        <p class="text-lg sm:text-xl font-semibold text-orange-400 mt-2">{{ project.due_status }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 
 
 <!-- Members & Access Control -->
@@ -210,7 +237,7 @@
                                 </span>
                                 {% endif %}
                                 {% if task.deadline %}
-                                <span class="text-xs text-white/30">{{ task.deadline|date:"M d" }}</span>
+                                <span class="text-xs text-white/30">{{ task.deadline|date:"d/m/Y" }}</span>
                                 {% endif %}
                             </div>
                         </div>
@@ -265,6 +292,73 @@
 </div>
 {% endif %}
 
+<!-- Uncategorized Tasks -->
+{% if uncategorized_tasks %}
+<div class="mb-6 sm:mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+            <h2 class="text-base sm:text-lg font-semibold text-white">Uncategorized Tasks</h2>
+            <p class="text-xs text-white/40 mt-1">Tasks not assigned to any project category</p>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-full bg-white/5 text-white/40 whitespace-nowrap w-fit">
+            {{ uncategorized_tasks|length }} task{{ uncategorized_tasks|length|pluralize }}
+        </span>
+    </div>
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <div class="space-y-2">
+            {% for task in uncategorized_tasks %}
+            <a href="{% url 'tasks:task_detail' task.pk %}"
+               class="block glass-card rounded-lg p-3 hover:bg-white/[0.06] transition-all group">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{{ task.title }}</p>
+                        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/40">
+                                {{ task.get_stage_display }}
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/20">
+                                {{ task.get_category_display }}
+                            </span>
+                            {% if task.story_points %}
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-400/20">
+                                {{ task.story_points }} SP
+                            </span>
+                            {% endif %}
+                            {% if task.deadline %}
+                            <span class="text-xs text-white/40">Deadline: {{ task.deadline|date:"d/m/Y" }}</span>
+                            {% endif %}
+                            {% if task.due_status %}
+                            <span class="text-xs px-2 py-0.5 rounded-full {% if 'Overdue' in task.due_status %}bg-red-500/15 text-red-400 border border-red-400/20{% elif 'Due today' in task.due_status %}bg-orange-500/15 text-orange-400 border border-orange-400/20{% else %}bg-yellow-500/15 text-yellow-400 border border-yellow-400/20{% endif %}">
+                                {{ task.due_status }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if task.assignees.all %}
+                    <div class="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+                        {% for assignee in task.assignees.all|slice:":3" %}
+                        <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-400/20">
+                            <div class="w-4 h-4 rounded-full bg-blue-500/30 flex items-center justify-center text-[9px]">
+                                {{ assignee.username.0|upper }}
+                            </div>
+                            <span class="text-xs">{{ assignee.username }}</span>
+                        </div>
+                        {% endfor %}
+                        {% if task.assignees.count > 3 %}
+                        <div class="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px] text-white/60">
+                            +{{ task.assignees.count|add:"-3" }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Project Activity Log -->
 <div class="mb-8">
     <h2 class="text-lg font-semibold text-white mb-4">Activity Log</h2>
@@ -302,7 +396,7 @@
                     <p class="text-xs text-white/50">{{ log.detail }}</p>
                     {% endif %}
                 </div>
-                <span class="text-xs text-white/30 ml-2 flex-shrink-0">{{ log.timestamp|date:"M d, H:i" }}</span>
+                <span class="text-xs text-white/30 ml-2 flex-shrink-0">{{ log.timestamp|date:"d/m/Y H:i" }}</span>
             </div>
             {% endfor %}
         {% else %}
@@ -337,7 +431,7 @@
                 <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full bg-blue-500/15 border border-blue-400/20 flex items-center justify-center text-xs text-blue-300">{{ note.author.username.0|upper }}</div>
                     <span class="text-sm text-white/70">{{ note.author.username }}</span>
-                    <span class="text-xs text-white/30">{{ note.created_at|date:"M d, Y H:i" }}</span>
+                    <span class="text-xs text-white/30">{{ note.created_at|date:"d/m/Y H:i" }}</span>
                 </div>
                 {% if user == note.author or user.is_system_admin %}
                 <form method="post" action="{% url 'projects:note_delete' note.pk %}" class="inline">

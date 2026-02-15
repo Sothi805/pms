@@ -22,16 +22,35 @@
                 <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-white/70 mb-2">
                     {{ field.label }}
                 </label>
+                
+                {% if 'user-search-field' in field.field.widget.attrs.class %}
+                <!-- Tag-based multi-select for users -->
+                <div class="user-search-container bg-white/5 border border-white/10 rounded-xl p-3 min-h-12">
+                    <div id="{{ field.id_for_label }}-tags" class="flex flex-wrap gap-2 mb-2"></div>
+                    <input 
+                        type="text"
+                        id="{{ field.id_for_label }}"
+                        placeholder="{{ field.field.widget.attrs.placeholder }}"
+                        class="w-full bg-transparent text-white focus:outline-none placeholder-white/40"
+                        autocomplete="off"
+                        data-field-type="user-search-multi"
+                        data-field-name="{{ field.name }}"
+                    />
+                    <!-- Hidden field to store actual selected users -->
+                    <input type="hidden" id="{{ field.id_for_label }}-hidden" name="{{ field.name }}" />
+                </div>
+                <!-- Autocomplete dropdown -->
+                <div id="{{ field.id_for_label }}-suggestions" class="absolute top-full left-0 right-0 mt-1 bg-white/10 border border-white/20 rounded-xl max-h-48 overflow-y-auto hidden z-50 backdrop-blur-sm"></div>
+                
+                {% else %}
                 {{ field }}
+                {% endif %}
+                
                 {% if field.errors %}
                 <p class="mt-1 text-xs text-red-400/80">{{ field.errors.0 }}</p>
                 {% endif %}
                 {% if field.help_text %}
                 <p class="mt-1 text-xs text-white/30">{{ field.help_text }}</p>
-                {% endif %}
-                <!-- Autocomplete dropdown for user search fields -->
-                {% if 'user-search-field' in field.field.widget.attrs.class %}
-                <div id="{{ field.id_for_label }}-suggestions" class="absolute top-full left-0 right-0 mt-1 bg-white/10 border border-white/20 rounded-xl max-h-48 overflow-y-auto hidden z-50 backdrop-blur-sm"></div>
                 {% endif %}
             </div>
             {% endfor %}
@@ -52,27 +71,50 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchFields = document.querySelectorAll('.user-search-field');
+    // Map field names to their existing members in context
+    const existingData = {
+        'members_search': {{ existing_members|safe }},
+        'commenters_search': {{ existing_commenters|safe }},
+        'viewers_search': {{ existing_viewers|safe }}
+    };
+
+    const searchFields = document.querySelectorAll('.user-search-container input[type="text"]');
     let debounceTimer;
+    let selectedUsers = {}; // Track selected users per field: { fieldId: Set of usernames }
 
     searchFields.forEach(field => {
-        const suggestionsDiv = document.getElementById(field.id + '-suggestions');
+        const fieldId = field.id;
+        const fieldName = field.getAttribute('data-field-name');
+        const hiddenField = document.getElementById(fieldId + '-hidden');
+        const tagsDiv = document.getElementById(fieldId + '-tags');
+        const suggestionsDiv = document.getElementById(fieldId + '-suggestions');
         const fieldType = field.getAttribute('data-field-type');
+        
+        selectedUsers[fieldId] = new Set();
+        
+        // Pre-populate with existing members if editing
+        if (existingData[fieldName]) {
+            existingData[fieldName].forEach(username => {
+                selectedUsers[fieldId].add(username);
+                addTagElement(tagsDiv, { username: username }, fieldId, selectedUsers);
+            });
+            updateHiddenField(hiddenField, selectedUsers[fieldId]);
+        }
         
         field.addEventListener('input', function() {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => performSearch(field, suggestionsDiv, fieldType), 300);
+            debounceTimer = setTimeout(() => performSearch(field, suggestionsDiv, fieldType, fieldId), 300);
         });
 
         // Hide suggestions when clicking outside
         document.addEventListener('click', function(e) {
-            if (e.target !== field && e.target.closest('#' + field.id + '-suggestions') === null) {
+            if (e.target !== field && !suggestionsDiv.contains(e.target) && !e.target.closest('.user-search-container')) {
                 suggestionsDiv.classList.add('hidden');
             }
         });
     });
 
-    async function performSearch(field, suggestionsDiv, fieldType) {
+    async function performSearch(field, suggestionsDiv, fieldType, fieldId) {
         const query = field.value.trim();
         if (!query || query.length < 1) {
             suggestionsDiv.classList.add('hidden');
@@ -82,13 +124,13 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch("{% url 'accounts:search_users' %}?q=" + encodeURIComponent(query));
             const data = await response.json();
-            displaySuggestions(field, suggestionsDiv, data.users, fieldType);
+            displaySuggestions(field, suggestionsDiv, data.users, fieldType, fieldId);
         } catch (error) {
             console.error('Error searching users:', error);
         }
     }
 
-    function displaySuggestions(field, suggestionsDiv, users, fieldType) {
+    function displaySuggestions(field, suggestionsDiv, users, fieldType, fieldId) {
         suggestionsDiv.innerHTML = '';
         
         if (users.length === 0) {
@@ -98,31 +140,60 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         users.forEach(user => {
+            // Don't show already selected users
+            if (selectedUsers[fieldId].has(user.username)) {
+                return;
+            }
+            
             const div = document.createElement('div');
             div.className = 'px-4 py-2 cursor-pointer hover:bg-white/10 transition text-white text-sm border-b border-white/5 last:border-b-0';
             div.textContent = `${user.username} (${user.email})`;
             
             div.addEventListener('click', function() {
-                if (fieldType === 'user-search-single') {
-                    field.value = user.username;
-                } else {
-                    // For multi-select, add to comma-separated list
-                    const currentValue = field.value.trim();
-                    const lastCommaIndex = currentValue.lastIndexOf(',');
-                    let beforeLastItem = '';
-                    
-                    if (lastCommaIndex !== -1) {
-                        beforeLastItem = currentValue.substring(0, lastCommaIndex + 1) + ' ';
-                    }
-                    field.value = beforeLastItem + user.username;
-                }
+                addUserTag(field, user, fieldId);
                 suggestionsDiv.classList.add('hidden');
+                field.value = ''; // Clear search
             });
             
             suggestionsDiv.appendChild(div);
         });
         
         suggestionsDiv.classList.remove('hidden');
+    }
+
+    function addUserTag(field, user, fieldId) {
+        const tagsDiv = document.getElementById(fieldId + '-tags');
+        const hiddenField = document.getElementById(fieldId + '-hidden');
+        
+        // Add to selected set
+        selectedUsers[fieldId].add(user.username);
+        addTagElement(tagsDiv, user, fieldId, selectedUsers);
+        updateHiddenField(hiddenField, selectedUsers[fieldId]);
+    }
+
+    function addTagElement(tagsDiv, user, fieldId, selectedUsers) {
+        const tag = document.createElement('span');
+        tag.className = 'inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-300 rounded-lg text-xs border border-blue-500/30';
+        tag.innerHTML = `
+            ${user.username}
+            <button type="button" class="hover:text-blue-100 font-bold" data-username="${user.username}">✕</button>
+        `;
+        
+        // Remove tag handler
+        const removeBtn = tag.querySelector('button');
+        removeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            selectedUsers[fieldId].delete(user.username);
+            const hiddenField = document.getElementById(fieldId + '-hidden');
+            tag.remove();
+            updateHiddenField(hiddenField, selectedUsers[fieldId]);
+        });
+        
+        tagsDiv.appendChild(tag);
+    }
+
+    function updateHiddenField(hiddenField, selectedSet) {
+        hiddenField.value = Array.from(selectedSet).join(', ');
     }
 });
 </script>
