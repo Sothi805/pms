@@ -177,6 +177,7 @@ def task_api_detail(request, pk):
         "is_closed": task.is_closed,
         "created_by": task.created_by.username if task.created_by else "System",
         "assignees": [a.username for a in task.assignees.all()],
+        "coordinator": task.coordinator.username if task.coordinator else None,
         "project_category": task.project_category.name if task.project_category else None,
     })
 
@@ -435,30 +436,46 @@ def _handle_general_done(task, user):
 
 
 def _handle_testing_reject(task, user):
-    """REJECT in TESTING: close testing, clone back to original category."""
+    """REJECT in TESTING: close testing task, reset parent dev task back to TODO."""
     task.is_closed = True
     task.save()
 
-    rework_cat = task.original_category or TaskInstance.DEVELOPMENT
-    rework_task = TaskInstance.objects.create(
-        title=task.title,
-        description=task.description,
-        project=task.project,
-        category=rework_cat,
-        stage=TaskInstance.TODO,
-        created_by=user,
-        story_points=0,  # rework: no new story points
-        deadline=task.deadline,
-        parent_task=task,
-        original_category=rework_cat,
-    )
-    rework_task.assignees.set(task.assignees.all())
-
-    log_action(
-        actor=user,
-        action="TESTING_REJECTED",
-        target_type="TaskInstance",
-        target_id=rework_task.pk,
-        detail=f"Testing rejected for '{task.title}'. Rework cloned back to {rework_cat}.",
-        project=task.project,
-    )
+    if task.parent_task and not task.parent_task.is_closed:
+        # Reset the original development task back to TODO for rework
+        parent = task.parent_task
+        parent.stage = TaskInstance.TODO
+        parent.end_date = None
+        parent.points_earned = False
+        parent.save()
+        log_action(
+            actor=user,
+            action="TESTING_REJECTED",
+            target_type="TaskInstance",
+            target_id=parent.pk,
+            detail=f"Testing rejected for '{task.title}'. Task reset to TODO for rework.",
+            project=task.project,
+        )
+    else:
+        # No accessible parent task — create a rework clone
+        rework_cat = task.original_category or TaskInstance.DEVELOPMENT
+        rework_task = TaskInstance.objects.create(
+            title=task.title,
+            description=task.description,
+            project=task.project,
+            category=rework_cat,
+            stage=TaskInstance.TODO,
+            created_by=user,
+            story_points=0,
+            deadline=task.deadline,
+            parent_task=task,
+            original_category=rework_cat,
+        )
+        rework_task.assignees.set(task.assignees.all())
+        log_action(
+            actor=user,
+            action="TESTING_REJECTED",
+            target_type="TaskInstance",
+            target_id=rework_task.pk,
+            detail=f"Testing rejected for '{task.title}'. Rework cloned back to {rework_cat}.",
+            project=task.project,
+        )

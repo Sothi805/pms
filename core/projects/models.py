@@ -146,14 +146,24 @@ class Project(models.Model):
 
     @property
     def due_status(self):
-        """Returns 'Due in X days', 'Overdue X days', or None if no planned end date.
-        
-        Based on planned_end_date vs today.
+        """Returns status based on project timeline:
+        - 'Starts in X days' if project hasn't started yet
+        - 'Due in X days' if project is in progress
+        - 'Overdue X days' if past deadline
         """
+        today = timezone.now().date()
+        
+        # Check if project has a planned start date and hasn't started yet
+        if self.planned_start_date and today < self.planned_start_date:
+            days_until_start = (self.planned_start_date - today).days
+            if days_until_start == 0:
+                return "Starts today"
+            return f"Starts in {days_until_start} day{'s' if days_until_start != 1 else ''}"
+        
+        # If project has started (or no start date), show due status based on end date
         if not self.planned_end_date:
             return None
         
-        today = timezone.now().date()
         days_diff = (self.planned_end_date - today).days
         
         if days_diff > 0:
@@ -162,6 +172,13 @@ class Project(models.Model):
             return "Due today"
         else:
             return f"Overdue {abs(days_diff)} day{'s' if abs(days_diff) != 1 else ''}"
+
+    @property
+    def project_duration(self):
+        """Returns the total duration of the project in days."""
+        if not self.planned_start_date or not self.planned_end_date:
+            return None
+        return (self.planned_end_date - self.planned_start_date).days
 
     def user_is_member(self, user):
         """Check if user has member access to this project.

@@ -36,6 +36,7 @@ def logout_view(request):
     return redirect("accounts:login")
 
 
+@login_required
 def user_list(request):
     if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
@@ -44,6 +45,7 @@ def user_list(request):
     return render(request, "accounts/user_list.html", {"users": users})
 
 
+@login_required
 def user_create(request):
     if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
@@ -72,6 +74,7 @@ def user_create(request):
     return render(request, "accounts/user_form.html", {"form": form, "title": "Create User"})
 
 
+@login_required
 def user_edit(request, pk):
     if not request.user.is_system_admin():
         messages.error(request, "Permission denied.")
@@ -101,6 +104,7 @@ def user_edit(request, pk):
     )
 
 
+@login_required
 def reset_password(request, pk):
     if not request.user.is_system_admin():
         messages.error(request, "Only system administrator can reset passwords.")
@@ -123,6 +127,7 @@ def reset_password(request, pk):
     return redirect("accounts:user_list")
 
 
+@login_required
 def set_user_password(request, pk):
     """Superuser manually sets a password for any user."""
     if not request.user.is_system_admin():

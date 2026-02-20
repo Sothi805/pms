@@ -85,11 +85,19 @@
         <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Status</p>
         {% if "Overdue" in project.due_status %}
         <p class="text-lg sm:text-xl font-semibold text-red-400 mt-2">{{ project.due_status }}</p>
+        {% elif "Starts in" in project.due_status or "Starts today" in project.due_status %}
+        <p class="text-lg sm:text-xl font-semibold text-blue-400 mt-2">{{ project.due_status }}</p>
         {% elif "Due in" in project.due_status %}
         <p class="text-lg sm:text-xl font-semibold text-yellow-400 mt-2">{{ project.due_status }}</p>
         {% elif "Due today" in project.due_status %}
         <p class="text-lg sm:text-xl font-semibold text-orange-400 mt-2">{{ project.due_status }}</p>
         {% endif %}
+    </div>
+    {% endif %}
+    {% if project.project_duration %}
+    <div class="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5">
+        <p class="text-xs font-medium text-white/40 uppercase tracking-wider">Duration</p>
+        <p class="text-lg sm:text-xl font-semibold text-purple-400 mt-2">{{ project.project_duration }} day{{ project.project_duration|pluralize }}</p>
     </div>
     {% endif %}
 </div>

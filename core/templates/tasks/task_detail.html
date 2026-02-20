@@ -132,6 +132,16 @@
                 <p class="text-sm text-white/70">{{ task.created_by.username|default:"System" }}</p>
             </div>
             <div>
+                <h3 class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Coordinator</h3>
+                {% if task.coordinator %}
+                <span class="inline-flex items-center gap-1 text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full">
+                    {{ task.coordinator.username }}
+                </span>
+                {% else %}
+                <span class="text-xs text-white/30">None</span>
+                {% endif %}
+            </div>
+            <div>
                 <h3 class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Assignees</h3>
                 <div class="flex flex-wrap gap-1">
                     {% for a in task.assignees.all %}

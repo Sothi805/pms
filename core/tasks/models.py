@@ -74,6 +74,14 @@ class TaskInstance(models.Model):
         settings.AUTH_USER_MODEL, blank=True, related_name="assigned_tasks",
         help_text="Users working on this task."
     )
+    coordinator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="coordinated_tasks",
+        help_text="Coordinator responsible for overseeing this task.",
+    )
 
     # ── Metrics ──
     story_points = models.PositiveIntegerField(default=0)

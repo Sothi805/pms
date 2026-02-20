@@ -2,13 +2,24 @@
 {% block title %}Audit Logs — PMS{% endblock %}
 
 {% block content %}
-<div class="mb-6 sm:mb-8">
-    <h1 class="text-xl sm:text-2xl font-semibold text-white">Audit Logs</h1>
-    <p class="text-white/50 text-xs sm:text-sm mt-1">Immutable system activity log</p>
+<div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-white">Audit Logs</h1>
+        <p class="text-white/50 text-xs sm:text-sm mt-1">Immutable system activity log &mdash; {{ total_count }} total</p>
+    </div>
+    <!-- Page size control -->
+    <form method="get" class="flex items-center gap-2">
+        <label class="text-xs text-white/40 whitespace-nowrap">Show per page:</label>
+        <input type="number" name="page_size" value="{{ page_size }}" min="1" max="{{ total_count }}"
+               class="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+               onchange="this.form.submit()">
+        <span class="text-xs text-white/30">of {{ total_count }}</span>
+        <input type="hidden" name="page" value="1">
+    </form>
 </div>
 
 <div class="space-y-1 sm:space-y-2">
-    {% for log in logs %}
+    {% for log in page_obj %}
     <div class="flex gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.04] transition-all">
         <div class="w-1 rounded-full flex-shrink-0
             {% if 'CREATED' in log.action %}bg-emerald-500/30
@@ -35,4 +46,31 @@
     <p class="text-center text-white/40 py-8 sm:py-12">No logs yet.</p>
     {% endfor %}
 </div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="flex items-center justify-between mt-6">
+    <p class="text-xs text-white/40">
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ total_count }}
+    </p>
+    <div class="flex items-center gap-1">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&page_size={{ page_size }}"
+           class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">&laquo; Prev</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <span class="px-3 py-1.5 text-xs text-blue-300 bg-blue-500/15 rounded-lg">{{ num }}</span>
+            {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+            <a href="?page={{ num }}&page_size={{ page_size }}"
+               class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&page_size={{ page_size }}"
+           class="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all">Next &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

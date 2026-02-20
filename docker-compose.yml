@@ -1,0 +1,70 @@
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: pms_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=pms_db
+      - POSTGRES_USER=pms_user
+      - POSTGRES_PASSWORD=pms_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pms_user -d pms_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  web:
+    build: .
+    container_name: pms_web
+    command: >
+      sh -c "
+      echo 'Waiting for database...';
+      while ! nc -z db 5432; do sleep 1; done;
+      echo 'Database is ready!';
+      python manage.py migrate &&
+      python manage.py create_admin &&
+      python manage.py collectstatic --noinput &&
+      gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile - --log-level debug core.wsgi:application"
+    volumes:
+      - ./core:/app/core
+      - static_volume:/app/core/staticfiles
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=pms_db
+      - DB_USER=pms_user
+      - DB_PASSWORD=pms_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@example.com
+      - ADMIN_PASSWORD=admin123
+      - ALLOWED_HOSTS=*
+    working_dir: /app/core
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Optional: Nginx as reverse proxy (uncomment if needed)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: pms_nginx
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - static_volume:/app/staticfiles
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - web
+  #   restart: unless-stopped
+
+volumes:
+  static_volume:
+  postgres_data:

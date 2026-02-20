@@ -51,6 +51,16 @@ class TaskInstanceForm(forms.ModelForm):
             "data-field-type": "user-search-multi",
         }),
     )
+    coordinator_search = forms.CharField(
+        label="Coordinator",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": GLASS_INPUT + " user-search-field",
+            "placeholder": "Search coordinator by username or email",
+            "autocomplete": "off",
+            "data-field-type": "user-search-single",
+        }),
+    )
     
     deadline = forms.DateField(
         required=False,
@@ -99,10 +109,41 @@ class TaskInstanceForm(forms.ModelForm):
     def __init__(self, *args, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.project = project
-        if self.instance.pk and self.instance.assignees.exists():
-            # Pre-populate search field with current assignees
-            assignee_names = ", ".join(self.instance.assignees.values_list("username", flat=True))
-            self.fields["assignees_search"].initial = assignee_names
+        if self.instance.pk:
+            if self.instance.assignees.exists():
+                assignee_names = ", ".join(self.instance.assignees.values_list("username", flat=True))
+                self.fields["assignees_search"].initial = assignee_names
+            if self.instance.coordinator:
+                self.fields["coordinator_search"].initial = self.instance.coordinator.username
+
+    def clean_coordinator_search(self):
+        search_text = self.cleaned_data.get("coordinator_search", "").strip()
+        if not search_text:
+            self.cleaned_data["coordinator"] = None
+            return search_text
+
+        try:
+            user = User.objects.get(username=search_text, is_active=True)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(email=search_text, is_active=True)
+            except User.DoesNotExist:
+                user = User.objects.filter(username__icontains=search_text, is_active=True).first()
+                if not user:
+                    raise forms.ValidationError(f"User '{search_text}' not found.")
+
+        if self.project:
+            is_in_project = (
+                self.project.members.filter(pk=user.pk).exists() or
+                user.is_superuser
+            )
+            if not is_in_project:
+                raise forms.ValidationError(
+                    f"User '{search_text}' is not a member of this project."
+                )
+
+        self.cleaned_data["coordinator"] = user
+        return search_text
 
     def clean_assignees_search(self):
         search_text = self.cleaned_data.get("assignees_search", "").strip()
@@ -147,6 +188,7 @@ class TaskInstanceForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         if commit:
+            instance.coordinator = self.cleaned_data.get("coordinator")
             instance.save()
             assignees = self.cleaned_data.get("assignees", [])
             if assignees:
